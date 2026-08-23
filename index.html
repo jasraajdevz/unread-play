@@ -1,0 +1,3407 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Loop</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  :root{
+    /* a colder ground, a warmer ink: the phone should feel lit from inside */
+    --ground:#05060A; --phone:#101319; --bar:#141821; --line:#1D2330;
+    --them:#1C222C; --them2:#20262F; --me:#2F3E4C; --me2:#374858;
+    --ink:#E4E8ED; --dim:#8E97A3; --faint:#5D6773;
+    --alert:#C0484B; --instr:#C79647; --good:#7FA087;
+    --lift:0 1px 0 rgba(255,255,255,.028) inset;
+    --ease:cubic-bezier(.32,.72,0,1);
+  }
+  *{box-sizing:border-box;}
+  html{-webkit-text-size-adjust:100%;}
+  body{
+    background:radial-gradient(120% 80% at 50% 0%,#0A0D14 0%,var(--ground) 62%);
+    color:var(--ink); margin:0; min-height:100vh; -webkit-font-smoothing:antialiased;
+    -webkit-tap-highlight-color:transparent; overscroll-behavior:none;
+    font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",system-ui,sans-serif;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    padding:16px; gap:12px;
+  }
+  .phone{
+    width:100%; max-width:390px; height:min(780px,88vh); background:var(--phone);
+    border:1px solid #232A36; border-radius:30px; overflow:clip;
+    box-shadow:0 34px 90px -30px rgba(0,0,0,.95), 0 0 0 1px rgba(255,255,255,.02) inset,
+               0 1px 0 rgba(255,255,255,.05) inset;
+    display:flex; flex-direction:column; position:relative;
+  }
+  .statusbar{
+    height:32px; flex:none; display:flex; align-items:center; justify-content:space-between;
+    padding:0 20px; font-size:12px; color:var(--dim); font-variant-numeric:tabular-nums;
+  }
+  .appbar{
+    flex:none; height:52px; border-bottom:1px solid var(--line);
+    background:linear-gradient(180deg,#171C26,#141821);
+    box-shadow:var(--lift), 0 6px 18px -12px rgba(0,0,0,.9);
+    display:flex; align-items:center; gap:6px; padding:0 10px; position:relative; z-index:2;
+  }
+  .appbar .title{font-size:17px;font-weight:650;letter-spacing:-.015em;flex:1;min-width:0;
+                 overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .back{background:none;border:none;padding:4px 8px;margin-left:-8px;color:var(--dim);
+        font-size:22px;line-height:1;cursor:pointer;}
+  .back:hover{color:var(--ink);}
+  .sback{background:none;border:none;padding:4px 8px;margin-left:-8px;
+         color:var(--dim);font-size:22px;line-height:1;cursor:pointer;}
+  .sback:hover{color:var(--ink);}
+  .sback:focus-visible{outline:2px solid var(--instr);outline-offset:-2px;}
+  .scroll{flex:1;overflow-y:auto;}
+
+  .row{display:flex;gap:12px;align-items:center;padding:12px 14px;
+       border:none;border-bottom:1px solid var(--line);background:none;width:100%;
+       text-align:left;cursor:pointer;font-family:inherit;}
+  .row{transition:background .12s var(--ease);}
+  .row:hover{background:#161B24;}
+  .row:active{background:#1A2029;}
+  .avatar{width:44px;height:44px;flex:none;border-radius:50%;display:grid;place-items:center;
+          font-size:16px;font-weight:650;color:#0A0C10;position:relative;
+          box-shadow:0 1px 0 rgba(255,255,255,.14) inset, 0 4px 10px -6px rgba(0,0,0,.9);}
+  .avatar::after{content:"";position:absolute;inset:0;border-radius:50%;
+                 background:linear-gradient(160deg,rgba(255,255,255,.20),transparent 62%);}
+  .rb{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;}
+  .rt{display:flex;justify-content:space-between;align-items:baseline;gap:8px;}
+  .rn{font-size:15px;font-weight:650;letter-spacing:-.012em;}
+  .rtime{font-size:12px;color:var(--faint);flex:none;font-variant-numeric:tabular-nums;}
+  .rp{font-size:13px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .dot{min-width:19px;height:19px;padding:0 5px;border-radius:10px;background:var(--alert);
+       flex:none;color:#fff;font-size:11px;font-weight:650;line-height:19px;text-align:center;
+       font-variant-numeric:tabular-nums;
+       box-shadow:0 2px 8px -3px rgba(192,72,75,.9);}
+
+  .convo{display:flex;flex-direction:column;gap:3px;padding:16px 12px 22px;}
+  .msg{max-width:76%;padding:9px 13px;border-radius:19px;font-size:var(--text);
+       line-height:1.38;word-wrap:break-word;letter-spacing:-.004em;
+       box-shadow:var(--lift);}
+  .msg.them{background:linear-gradient(180deg,var(--them2),var(--them));
+             align-self:flex-start;border-bottom-left-radius:7px;}
+  .msg.me{background:linear-gradient(180deg,var(--me2),var(--me));color:#EEF2F6;
+          align-self:flex-end;border-bottom-right-radius:7px;}
+  .msg.run{border-radius:19px;}
+  .msg.them.run{border-bottom-left-radius:19px;}
+  .msg.me.run{border-bottom-right-radius:19px;}
+  .msg.live{animation:pop .3s var(--ease);}
+  .who{display:block;font-size:11px;color:var(--faint);margin-bottom:3px;
+       letter-spacing:.02em;font-weight:550;}
+  .divider{align-self:center;font-size:11px;color:var(--faint);padding:18px 0 12px;
+           letter-spacing:.07em;text-transform:uppercase;font-weight:550;}
+  .stamp{align-self:center;font-size:11px;color:var(--faint);padding:6px 0 2px;}
+  .photo{align-self:flex-start;max-width:76%;border-radius:14px;overflow:hidden;
+         border-bottom-left-radius:5px;line-height:0;animation:pop .22s ease-out;}
+  .photo canvas{width:100%;display:block;}
+  .typing{align-self:flex-start;background:var(--them);border-radius:16px;
+          border-bottom-left-radius:5px;padding:11px 14px;display:flex;gap:4px;}
+  .typing i{width:6px;height:6px;border-radius:50%;background:var(--faint);animation:blink 1.3s infinite;}
+  .typing i:nth-child(2){animation-delay:.2s;} .typing i:nth-child(3){animation-delay:.4s;}
+  @keyframes blink{0%,60%,100%{opacity:.3;}30%{opacity:1;}}
+  @keyframes pop{from{opacity:0;transform:translateY(7px) scale(.985);}
+                 to{opacity:1;transform:none;}}
+  @media (prefers-reduced-motion:reduce){.typing i{animation:none;opacity:.55;}.msg.live,.photo{animation:none;}}
+
+  .choices{flex:none;border-top:1px solid var(--line);
+           background:linear-gradient(180deg,#141821,#11151D);
+           box-shadow:0 -10px 24px -18px rgba(0,0,0,.95);
+           padding:11px 12px 13px;display:flex;flex-direction:column;gap:8px;}
+  .choice{width:100%;padding:12px 15px;border:1px solid #29313D;border-radius:22px;
+          background:linear-gradient(180deg,#1A2029,#161B23);color:var(--ink);
+          font-family:inherit;font-size:14px;letter-spacing:-.004em;
+          text-align:left;cursor:pointer;box-shadow:var(--lift);
+          transition:transform .12s var(--ease),background .15s,border-color .15s;}
+  .choice:hover{background:linear-gradient(180deg,#1F2732,#1A202A);border-color:#3B4653;}
+  .choice:active{transform:scale(.985);}
+  .choice:focus-visible{outline:2px solid var(--instr);outline-offset:2px;}
+
+  .end{position:absolute;inset:0;background:#08090C;display:flex;flex-direction:column;
+       align-items:center;justify-content:center;gap:18px;padding:32px;text-align:center;
+       opacity:0;pointer-events:none;transition:opacity 1.6s ease;}
+  .end.on{opacity:1;pointer-events:auto;}
+  .end p{font-family:"IBM Plex Mono",monospace;font-size:13px;line-height:1.7;color:var(--dim);
+         margin:0;max-width:30ch;white-space:pre-line;}
+  .end .t{color:var(--instr);letter-spacing:.18em;text-transform:uppercase;font-size:11px;}
+  .end button{font-family:"IBM Plex Mono",monospace;font-size:11px;letter-spacing:.08em;
+              color:var(--faint);background:none;border:1px solid var(--line);
+              border-radius:6px;padding:8px 14px;cursor:pointer;}
+  .end button:hover{color:var(--ink);}
+
+
+  /* ---- refinements ------------------------------------------------------- */
+  :root{ --text:15px; --radius:16px; }
+  .msg{font-size:var(--text);}
+  .rp,.rn{transition:color .15s;}
+  .row:focus-visible,.choice:focus-visible,.back:focus-visible,.cog:focus-visible{
+    outline:2px solid var(--instr); outline-offset:-2px;}
+  .row.pulse{animation:pulse .9s ease-out;}
+  @keyframes pulse{0%{background:#20262F;}100%{background:none;}}
+  .scroll::-webkit-scrollbar{width:6px;}
+  .scroll::-webkit-scrollbar-thumb{background:#242B35;border-radius:3px;}
+  .scroll::-webkit-scrollbar-track{background:transparent;}
+  body.reduce .msg.live,body.reduce .photo,body.reduce .row.pulse{animation:none;}
+  body.reduce .typing i{animation:none;opacity:.55;}
+  body.notimestamps .stamp{display:none;}
+
+  .cog{background:none;border:none;color:var(--dim);font-size:19px;line-height:1;
+       padding:4px 6px;margin-right:-4px;cursor:pointer;}
+  .cog:hover{color:var(--ink);}
+
+  /* ---- the settings sheet ------------------------------------------------- */
+  .sheet{position:absolute;inset:0;background:var(--phone);display:flex;
+         flex-direction:column;transform:translateY(100%);transition:transform .28s
+         cubic-bezier(.4,0,.2,1);z-index:5;}
+  .sheet.on{transform:none;}
+  body.reduce .sheet{transition:none;}
+  .sheet .scroll{padding-bottom:24px;}
+  .sgroup{padding:18px 16px 6px;font-size:11px;letter-spacing:.09em;color:var(--faint);
+          text-transform:uppercase;}
+  .srow{display:flex;align-items:center;gap:12px;padding:12px 16px;
+        border-bottom:1px solid var(--line);font-size:14px;min-height:48px;}
+  .srow .lbl{flex:1;min-width:0;}
+  .srow .sub{display:block;font-size:11px;color:var(--faint);margin-top:2px;}
+  .srow .val{color:var(--dim);font-variant-numeric:tabular-nums;font-size:13px;}
+  button.srow{width:100%;background:none;border:none;border-bottom:1px solid var(--line);
+              color:var(--ink);font-family:inherit;text-align:left;cursor:pointer;}
+  button.srow:hover{background:#171C23;}
+  .srow.danger .lbl{color:var(--alert);}
+
+  .me-card{display:flex;gap:14px;align-items:center;padding:20px 16px;
+           border-bottom:1px solid var(--line);}
+  .me-card .avatar{width:52px;height:52px;font-size:19px;}
+  .me-card .col{display:flex;flex-direction:column;min-width:0;flex:1;}
+  .me-card .who2{font-size:17px;font-weight:600;}
+  .me-card .sub{font-size:12px;color:var(--faint);margin-top:3px;}
+
+  .toggle{width:42px;height:25px;border-radius:13px;background:#2A323D;border:none;
+          position:relative;cursor:pointer;flex:none;transition:background .18s;}
+  .toggle::after{content:"";position:absolute;top:3px;left:3px;width:19px;height:19px;
+                 border-radius:50%;background:#6D7784;transition:transform .18s,background .18s;}
+  .toggle[aria-checked="true"]{background:#3E5B45;}
+  .toggle[aria-checked="true"]::after{transform:translateX(17px);background:#CFE0D3;}
+  body.reduce .toggle,body.reduce .toggle::after{transition:none;}
+
+  .seg{display:flex;gap:4px;flex:none;}
+  .seg button{background:#1B2029;border:1px solid #262E39;color:var(--dim);
+              font-family:inherit;font-size:12px;padding:5px 11px;border-radius:7px;
+              cursor:pointer;}
+  .seg button[aria-pressed="true"]{background:#2E3A45;color:var(--ink);border-color:#3A4551;}
+
+  .note{padding:14px 16px 4px;font-size:11px;line-height:1.55;color:var(--faint);}
+  .fail{padding:10px 16px;font-size:12px;color:var(--alert);}
+
+
+  /* ---- reactions ---------------------------------------------------------- */
+  .msg{position:relative;}
+  .msg.held{filter:brightness(1.35);}
+  body.reduce .msg.held{filter:none;outline:1px solid var(--instr);}
+  .react{position:absolute;bottom:-9px;font-size:12px;line-height:1;padding:2px 5px;
+         border-radius:10px;background:#12161C;border:1px solid var(--line);
+         white-space:nowrap;}
+  .msg.them .react{left:8px;}
+  .msg.me .react{right:8px;}
+  .react.theirs{border-color:#3A2A2C;background:#17110F;}
+  .react .n{color:var(--faint);margin-left:3px;font-size:10px;}
+
+  .picker{position:absolute;z-index:8;display:flex;gap:2px;padding:5px;
+          background:#171B21;border:1px solid var(--line);border-radius:20px;
+          box-shadow:0 8px 26px rgba(0,0,0,.6);}
+  .picker button{background:none;border:none;font-size:19px;line-height:1;padding:4px 5px;
+                 border-radius:50%;cursor:pointer;}
+  .picker button:hover{background:#232B35;}
+  .picker button:focus-visible{outline:2px solid var(--instr);}
+
+  /* ---- the photo, opened -------------------------------------------------- */
+  .viewer{position:absolute;inset:0;z-index:9;background:#000;display:flex;
+          flex-direction:column;opacity:0;pointer-events:none;transition:opacity .2s;}
+  .viewer.on{opacity:1;pointer-events:auto;}
+  body.reduce .viewer{transition:none;}
+  .viewer .vbar{flex:none;height:46px;display:flex;align-items:center;
+                justify-content:space-between;padding:0 14px;color:var(--dim);
+                font-size:12px;font-variant-numeric:tabular-nums;}
+  .viewer .vclose{background:none;border:none;color:var(--dim);font-size:24px;
+                  line-height:1;cursor:pointer;padding:2px 6px;}
+  .viewer .vclose:hover{color:var(--ink);}
+  .viewer .stage{flex:1;overflow:hidden;display:grid;place-items:center;
+                 touch-action:none;cursor:grab;}
+  .viewer .stage.dragging{cursor:grabbing;}
+  .viewer canvas{transform-origin:center center;image-rendering:auto;}
+  .viewer .hint{flex:none;padding:10px 14px 16px;font-size:11px;color:#39414C;
+                text-align:center;letter-spacing:.05em;}
+
+
+  /* ---- keypad, shared by the lock and the guess --------------------------- */
+  .pad{display:grid;grid-template-columns:repeat(3,58px);gap:8px;justify-content:center;
+       padding:14px 0 4px;}
+  .pad button{height:48px;border-radius:12px;border:1px solid #2A323D;background:#1B2029;
+              color:var(--ink);font-family:inherit;font-size:18px;cursor:pointer;
+              font-variant-numeric:tabular-nums;}
+  .pad button:hover{background:#232B35;}
+  .pad button:active{background:#2E3A45;}
+  .pad button.wide{grid-column:span 2;font-size:14px;}
+  .pad button.go{background:#2E3A45;border-color:#3A4551;}
+  .pad button:focus-visible{outline:2px solid var(--instr);outline-offset:2px;}
+  .padout{text-align:center;font-size:26px;letter-spacing:.32em;padding:8px 0 2px;
+          color:var(--ink);font-variant-numeric:tabular-nums;min-height:34px;}
+  .padmsg{text-align:center;font-size:12px;color:var(--faint);padding:4px 0 2px;min-height:18px;}
+  .padmsg.bad{color:var(--alert);}
+  .padmsg.good{color:#7FA087;}
+
+  .locked{display:flex;flex-direction:column;justify-content:center;height:100%;
+          padding:0 22px 40px;}
+  .locked .glyph{text-align:center;font-size:34px;color:var(--faint);padding-bottom:4px;}
+  .locked .cap{text-align:center;font-size:12px;color:var(--faint);letter-spacing:.06em;}
+
+  .game{align-self:stretch;margin:6px 0 2px;padding:12px 10px 8px;border-radius:14px;
+        background:#171C24;border:1px solid var(--line);}
+  .game .head{font-size:12px;color:var(--dim);text-align:center;letter-spacing:.04em;}
+  .game .tries{display:flex;gap:5px;justify-content:center;flex-wrap:wrap;padding-top:8px;}
+  .game .try{font-size:11px;color:var(--faint);border:1px solid var(--line);
+             border-radius:9px;padding:2px 7px;font-variant-numeric:tabular-nums;}
+  .game .try.up::after{content:" ↑";} .game .try.down::after{content:" ↓";}
+  .game.done .pad{display:none;}
+  .row .lock{color:var(--faint);font-size:12px;flex:none;}
+
+
+  /* ---- voice memo --------------------------------------------------------- */
+  .vm{display:flex;align-items:center;gap:10px;min-width:210px;padding:9px 12px 9px 10px;}
+  .vm .play{flex:none;width:32px;height:32px;border-radius:50%;border:none;cursor:pointer;
+            background:#3A4551;color:#DDE3EA;font-size:13px;line-height:32px;padding:0;}
+  .vm .play:hover{background:#46525F;}
+  .vm .play:focus-visible{outline:2px solid var(--instr);outline-offset:2px;}
+  .vm .wave{flex:1;display:flex;align-items:center;gap:2px;height:26px;cursor:pointer;
+            touch-action:none;}
+  .vm .wave i{flex:1;background:#4C5765;border-radius:1px;min-width:2px;
+              transition:background .08s;}
+  body.reduce .vm .wave i{transition:none;}
+  .vm .wave i.past{background:#93A2B2;}
+  .vm .dur{flex:none;font-size:11px;color:var(--faint);font-variant-numeric:tabular-nums;
+           min-width:30px;text-align:right;}
+
+  /* ---- swipe to reveal the times ------------------------------------------ */
+  .convo{transition:transform .18s cubic-bezier(.4,0,.2,1);}
+  .convo.peeking{transition:none;}
+  .convo{padding-left:12px;}
+  .convo.shifted{padding-left:70px;}
+  body.reduce .convo{transition:none;}
+  .when{position:absolute;right:-58px;top:50%;transform:translateY(-50%);font-size:10px;
+        user-select:none;-webkit-user-select:none;
+        color:var(--faint);font-variant-numeric:tabular-nums;white-space:nowrap;
+        opacity:0;transition:opacity .15s;}
+  .convo.shifted .when{opacity:1;}
+  body.reduce .when{transition:none;}
+
+  /* ---- status bar --------------------------------------------------------- */
+  .statusbar .right{display:flex;align-items:center;gap:7px;}
+  .statusbar .bars{display:flex;align-items:flex-end;gap:2px;height:10px;}
+  .statusbar .bars i{width:3px;background:#4A535E;border-radius:1px;}
+  .statusbar .bars i.on{background:var(--dim);}
+  .batt{display:flex;align-items:center;gap:3px;}
+  .batt .cell{width:22px;height:11px;border:1px solid #4A535E;border-radius:3px;padding:1px;}
+  .batt .fill{height:100%;background:var(--dim);border-radius:1px;}
+  .batt.low .fill{background:var(--alert);}
+  .batt .pct{font-size:10px;color:var(--faint);font-variant-numeric:tabular-nums;}
+
+
+  /* ---- search ------------------------------------------------------------- */
+  .find{background:none;border:none;color:var(--dim);font-size:16px;line-height:1;
+        padding:4px 6px;cursor:pointer;}
+  .find:hover{color:var(--ink);}
+  .searchbar{display:flex;align-items:center;gap:8px;width:100%;}
+  .searchbar input{flex:1;min-width:0;background:#11151B;border:1px solid var(--line);
+                   border-radius:16px;padding:7px 12px;color:var(--ink);font-family:inherit;
+                   font-size:14px;}
+  .searchbar input:focus{outline:none;border-color:#33414F;}
+  .searchbar input::placeholder{color:var(--faint);}
+  .hit{display:flex;flex-direction:column;gap:2px;padding:11px 14px;width:100%;
+       border:none;border-bottom:1px solid var(--line);background:none;text-align:left;
+       cursor:pointer;font-family:inherit;}
+  .hit:hover{background:#171C23;}
+  .hit .top{display:flex;justify-content:space-between;gap:8px;align-items:baseline;}
+  .hit .who3{font-size:13px;font-weight:600;color:var(--ink);}
+  .hit .at{font-size:11px;color:var(--faint);font-variant-numeric:tabular-nums;}
+  .hit .line{font-size:13px;color:var(--dim);overflow:hidden;text-overflow:ellipsis;
+             white-space:nowrap;}
+  .hit mark{background:none;color:var(--instr);}
+  .empty{padding:26px 16px;text-align:center;font-size:12px;color:var(--faint);}
+
+  /* ---- spot the difference ------------------------------------------------ */
+  .spot{align-self:stretch;margin:6px 0 2px;padding:10px;border-radius:14px;
+        background:#171C24;border:1px solid var(--line);}
+  .spot .head{font-size:12px;color:var(--dim);text-align:center;padding-bottom:8px;}
+  .spot .pair{display:flex;gap:8px;}
+  .spot .shot{position:relative;flex:1;border-radius:8px;overflow:hidden;cursor:crosshair;
+              line-height:0;}
+  .spot canvas{width:100%;display:block;}
+  .spot .tag{position:absolute;top:4px;left:5px;font-size:9px;color:#B9C2CC;
+             background:rgba(0,0,0,.55);padding:1px 5px;border-radius:6px;line-height:1.4;}
+  .spot .ring{position:absolute;width:38px;height:38px;margin:-19px 0 0 -19px;
+              border:2px solid var(--instr);border-radius:50%;pointer-events:none;
+              opacity:0;transition:opacity .2s;}
+  .spot.solved .ring{opacity:1;}
+  body.reduce .spot .ring{transition:none;}
+  .spot .miss{position:absolute;width:16px;height:16px;margin:-8px 0 0 -8px;border-radius:50%;
+              border:1px solid #5A626D;pointer-events:none;}
+  .spot .note2{text-align:center;font-size:11px;color:var(--faint);padding-top:8px;min-height:16px;}
+  .spot.solved .note2{color:#7FA087;}
+
+
+  /* ---- an unread row ------------------------------------------------------ */
+  .row.new .rn{color:#F2F5F8;}
+  .row.new .rp{color:#B6BEC8;font-weight:550;}
+  .row.new .rtime{color:var(--alert);}
+
+  /* ---- recall ------------------------------------------------------------- */
+  .recall{align-self:stretch;margin:6px 0 2px;padding:12px;border-radius:14px;
+          background:#171C24;border:1px solid var(--line);}
+  .recall .head{font-size:12px;color:var(--dim);text-align:center;padding-bottom:10px;}
+  .recall .opts{display:flex;flex-direction:column;gap:7px;}
+  .recall .opt{width:100%;padding:10px 13px;border:1px solid #29313D;border-radius:12px;
+               background:linear-gradient(180deg,#1A2029,#161B23);color:var(--ink);
+               font-family:inherit;font-size:13.5px;text-align:left;cursor:pointer;
+               box-shadow:var(--lift);
+               transition:transform .12s var(--ease),border-color .15s,background .15s;}
+  .recall .opt:hover{border-color:#3B4653;}
+  .recall .opt:active{transform:scale(.985);}
+  .recall .opt.right{border-color:var(--good);background:rgba(127,160,135,.10);}
+  .recall .opt.wrong{border-color:#4A3034;opacity:.55;}
+  .recall.done .opt{cursor:default;}
+  .recall .note2{text-align:center;font-size:11px;color:var(--faint);
+                 padding-top:10px;min-height:16px;}
+  .recall.done .note2{color:var(--good);}
+
+
+  /* ---- match -------------------------------------------------------------- */
+  .match{align-self:stretch;margin:6px 0 2px;padding:12px;border-radius:14px;
+         background:#171C24;border:1px solid var(--line);}
+  .match .head{font-size:12px;color:var(--dim);text-align:center;padding-bottom:10px;}
+  .match .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;}
+  .match .tile{aspect-ratio:1;border:1px solid #29313D;border-radius:11px;
+               background:linear-gradient(180deg,#1B222C,#151A22);cursor:pointer;
+               display:grid;place-items:center;padding:0;box-shadow:var(--lift);
+               transition:transform .16s var(--ease),background .2s,border-color .2s;}
+  .match .tile:hover{border-color:#3B4653;}
+  .match .tile:active{transform:scale(.94);}
+  .match .face{font-size:17px;color:#3A424E;line-height:1;}
+  .match .tile.up{background:linear-gradient(180deg,#232C38,#1C242E);border-color:#3D4956;}
+  .match .tile.up .face{color:#C6D0DB;}
+  .match .tile.kept{cursor:default;border-color:rgba(127,160,135,.45);
+                    background:linear-gradient(180deg,#1F2A26,#19211E);}
+  .match .tile.kept .face{color:var(--good);}
+  .match .tile.odd{border-color:#4A3034;background:linear-gradient(180deg,#241B1D,#1B1517);}
+  .match .note2{text-align:center;font-size:11px;color:var(--faint);
+                padding-top:10px;min-height:16px;}
+  .match.done .note2{color:var(--good);}
+
+
+  /* ---- touch --------------------------------------------------------------
+     Nothing here changes a gesture. It stops the browser from answering first:
+     no double-tap zoom on a message you meant to react to, no selection
+     magnifier during a 420ms hold, no rubber-banding the page behind the app. */
+  button,.row,.msg,.choice,.tile,.opt,.hit,.photo,.spot .shot{
+    touch-action:manipulation;
+  }
+  #scroll{overscroll-behavior:contain;-webkit-overflow-scrolling:touch;}
+  /* the swipe for timestamps is horizontal; the scroll is vertical. Say so, or a
+     phone gives the whole gesture to whichever it guesses first. */
+  .convo{touch-action:pan-y;}
+  .msg,.row,.choice,.tile,.opt,.divider,.who{
+    -webkit-touch-callout:none; -webkit-user-select:none; user-select:none;
+  }
+
+  /* ---- on a phone, be the phone -------------------------------------------
+     svh, not dvh: the choices sit at the bottom edge, and a height that grows
+     and shrinks with the browser's own chrome would walk them off the screen. */
+  @media (max-width:520px),(max-height:560px){
+    body{padding:0; gap:0; min-height:100svh;}
+    .phone{
+      max-width:none; height:100vh; height:100svh;
+      border:none; border-radius:0; box-shadow:none;
+    }
+    .statusbar{padding-top:env(safe-area-inset-top,0px);}
+    .choices{padding-bottom:calc(13px + env(safe-area-inset-bottom,0px));}
+    .convo{padding-bottom:calc(22px + env(safe-area-inset-bottom,0px));}
+    /* iOS zooms the page on focus for anything under 16px, and never zooms back */
+    .searchbar input{font-size:16px;}
+    .foot{display:none;}   /* the same words are in Settings, where there is room */
+  }
+
+  .foot{font-family:"IBM Plex Mono",monospace;font-size:10px;color:#2A313B;
+        letter-spacing:.16em;}
+</style>
+
+<div class="phone">
+  <div class="statusbar"><span id="clock"></span><span class="right"><span class="bars" id="bars"></span><span class="batt" id="batt"></span></span></div>
+  <div class="appbar" id="appbar"></div>
+  <div class="scroll" id="scroll"></div>
+  <div id="choices"></div>
+  <div class="sheet" id="sheet" aria-hidden="true">
+    <div class="appbar">
+      <button class="sback" id="sheetBack" aria-label="Back">‹</button>
+      <span class="title" id="sheetTitle"></span>
+    </div>
+    <div class="scroll" id="sheetBody"></div>
+  </div>
+  <div class="viewer" id="viewer" aria-hidden="true">
+    <div class="vbar"><span id="vzoom"></span><button class="vclose" id="vclose" aria-label="Close">×</button></div>
+    <div class="stage" id="vstage"></div>
+    <div class="hint" id="vhint"></div>
+  </div>
+  <div class="end" id="end">
+    <p class="t" id="endTitle"></p>
+    <p id="endBody"></p>
+    <button id="again">Start again</button>
+  </div>
+</div>
+<p class="foot">A WORK OF FICTION</p>
+
+<script>window.STORY={"version":7,"contacts":[{"id":"c_mom","displayName":"Mom","accentHex":"#7A8B99"},{"id":"c_sam","displayName":"sam","accentHex":"#8A8577"},{"id":"c_priya","displayName":"priya","accentHex":"#7E8A80"},{"id":"c_dave","displayName":"Dave","accentHex":"#6F7F76"},{"id":"c_notify","displayName":"Notify","accentHex":"#8A8A8A"},{"id":"c_archive","displayName":"+44 7700 900931","accentHex":"#5F6570"}],"threads":[{"id":"t_mom","displayName":"Mom","startBeat":"b_mom_1","pinned":false,"contactId":"c_mom","startsUnread":true,"accentHex":"#9AA7B4"},{"id":"t_flat","displayName":"the flat","startBeat":"b_flat_1","pinned":false,"participantIds":["c_sam","c_priya"],"startsUnread":true,"accentHex":"#8FA08C"},{"id":"t_dave","displayName":"Dave","startBeat":"b_dave_1","pinned":false,"contactId":"c_dave","accentHex":"#A8946F"},{"id":"t_notify","displayName":"Notify","startBeat":"b_notify_1","pinned":false,"contactId":"c_notify","accentHex":"#77808B"},{"id":"t_unknown","displayName":"+44 7700 900931","startBeat":"b_unknown_1","pinned":false,"accentHex":"#6E7480"},{"id":"t_archive","displayName":"Archived","contactId":"c_archive","accentHex":"#4A5058","startBeat":"b_archive_1","pinned":false,"archived":true,"lockedBy":"8830"}],"beats":[{"id":"b_mom_1","threadId":"t_mom","messages":[{"id":"m_mom_them_01","from":"them","kind":"text","body":"did you ring the dentist","offsetMinutes":-17280,"delayMs":0,"typingMs":0},{"id":"m_mom_them_02","from":"them","kind":"text","body":"ren","offsetMinutes":-17278,"delayMs":0,"typingMs":0},{"id":"m_mom_me_03","from":"me","kind":"text","body":"yeah","offsetMinutes":-17275,"delayMs":0,"typingMs":0},{"id":"m_mom_them_04","from":"them","kind":"text","body":"what did they say","offsetMinutes":-17272,"delayMs":0,"typingMs":0},{"id":"m_mom_me_05","from":"me","kind":"text","body":"14th","offsetMinutes":-17271,"delayMs":0,"typingMs":0},{"id":"m_mom_them_06","from":"them","kind":"text","body":"thats a thursday","offsetMinutes":-17269,"delayMs":0,"typingMs":0},{"id":"m_mom_me_07","from":"me","kind":"text","body":"yeah","offsetMinutes":-17268,"delayMs":0,"typingMs":0},{"id":"m_mom_them_08","from":"them","kind":"text","body":"youre working thursday","offsetMinutes":-17267,"delayMs":0,"typingMs":0},{"id":"m_mom_me_09","from":"me","kind":"text","body":"ill sort it","offsetMinutes":-17265,"delayMs":0,"typingMs":0},{"id":"m_mom_them_10","from":"them","kind":"text","body":"you said that about the last one","offsetMinutes":-17263,"delayMs":0,"typingMs":0},{"id":"m_mom_me_11","from":"me","kind":"text","body":"mum","offsetMinutes":-17260,"delayMs":0,"typingMs":0},{"id":"m_mom_them_12","from":"them","kind":"text","body":"alright","offsetMinutes":-17258,"delayMs":0,"typingMs":0},{"id":"m_mom_them_13","from":"them","kind":"text","body":"is the car still making the noise","offsetMinutes":-17257,"delayMs":0,"typingMs":0},{"id":"m_mom_me_14","from":"me","kind":"text","body":"which noise","offsetMinutes":-17255,"delayMs":0,"typingMs":0},{"id":"m_mom_them_15","from":"them","kind":"text","body":"the one from before","offsetMinutes":-17253,"delayMs":0,"typingMs":0},{"id":"m_mom_me_16","from":"me","kind":"text","body":"no","offsetMinutes":-17250,"delayMs":0,"typingMs":0},{"id":"m_mom_them_17","from":"them","kind":"text","body":"ok","offsetMinutes":-17247,"delayMs":0,"typingMs":0},{"id":"m_mom_them_18","from":"them","kind":"text","body":"dad says put the blue oil in not the grey one","offsetMinutes":-17245,"delayMs":0,"typingMs":0},{"id":"m_mom_me_19","from":"me","kind":"text","body":"theres no blue one","offsetMinutes":-17242,"delayMs":0,"typingMs":0},{"id":"m_mom_them_20","from":"them","kind":"text","body":"theres a blue one","offsetMinutes":-17239,"delayMs":0,"typingMs":0},{"id":"m_mom_me_21","from":"me","kind":"text","body":"ok","offsetMinutes":-17238,"delayMs":0,"typingMs":0},{"id":"m_mom_them_22","from":"them","kind":"text","body":"ren did you go on thursday","offsetMinutes":-8760,"delayMs":0,"typingMs":0}]},{"id":"b_flat_1","threadId":"t_flat","messages":[{"id":"m_flat_sam_01","from":"them","kind":"text","body":"whos bin week is it","offsetMinutes":-11520,"delayMs":0,"typingMs":0,"fromContactId":"c_sam"},{"id":"m_flat_sam_02","from":"them","kind":"text","body":"i genuinely cannot keep track","offsetMinutes":-11518,"delayMs":0,"typingMs":0,"fromContactId":"c_sam"},{"id":"m_flat_priya_03","from":"them","kind":"text","body":"yours","offsetMinutes":-11516,"delayMs":0,"typingMs":0,"fromContactId":"c_priya"},{"id":"m_flat_sam_04","from":"them","kind":"text","body":"it is NOT mine","offsetMinutes":-11514,"delayMs":0,"typingMs":0,"fromContactId":"c_sam"},{"id":"m_flat_priya_05","from":"them","kind":"text","body":"it is","offsetMinutes":-11512,"delayMs":0,"typingMs":0,"fromContactId":"c_priya"},{"id":"m_flat_sam_06","from":"them","kind":"text","body":"i did it two weeks ago","offsetMinutes":-11510,"delayMs":0,"typingMs":0,"fromContactId":"c_sam"},{"id":"m_flat_priya_07","from":"them","kind":"text","body":"two weeks ago is when it was yours","offsetMinutes":-11508,"delayMs":0,"typingMs":0,"fromContactId":"c_priya"},{"id":"m_flat_me_08","from":"me","kind":"text","body":"its mine","offsetMinutes":-11506,"delayMs":0,"typingMs":0},{"id":"m_flat_sam_09","from":"them","kind":"text","body":"see","offsetMinutes":-11505,"delayMs":0,"typingMs":0,"fromContactId":"c_sam"},{"id":"m_flat_priya_10","from":"them","kind":"text","body":"thats not a see","offsetMinutes":-11504,"delayMs":0,"typingMs":0,"fromContactId":"c_priya"},{"id":"m_flat_me_11","from":"me","kind":"text","body":"ill do it","offsetMinutes":-11502,"delayMs":0,"typingMs":0},{"id":"m_flat_priya_12","from":"them","kind":"text","body":"sam what did the rota actually say","offsetMinutes":-11501,"delayMs":0,"typingMs":0,"fromContactId":"c_priya"},{"id":"m_flat_sam_13","from":"them","kind":"text","body":"there was a rota","offsetMinutes":-11500,"delayMs":0,"typingMs":0,"fromContactId":"c_sam"},{"id":"m_flat_priya_14","from":"them","kind":"text","body":"there was a rota?","offsetMinutes":-11499,"delayMs":0,"typingMs":0,"fromContactId":"c_priya"},{"id":"m_flat_sam_15","from":"them","kind":"text","body":"i made it in october","offsetMinutes":-11498,"delayMs":0,"typingMs":0,"fromContactId":"c_sam"},{"id":"m_flat_priya_16","from":"them","kind":"text","body":"october","offsetMinutes":-11496,"delayMs":0,"typingMs":0,"fromContactId":"c_priya"},{"id":"m_flat_sam_17","from":"them","kind":"text","body":"it was laminated","offsetMinutes":-11494,"delayMs":0,"typingMs":0,"fromContactId":"c_sam"},{"id":"m_flat_sam_18","from":"them","kind":"text","body":"ren settle this","offsetMinutes":-11492,"delayMs":0,"typingMs":0,"fromContactId":"c_sam"},{"id":"m_flat_priya_19","from":"them","kind":"text","body":"ren whose week is it","offsetMinutes":-11491,"delayMs":0,"typingMs":0,"fromContactId":"c_priya"},{"id":"m_flat_me_20","from":"me","kind":"text","body":"its mine","offsetMinutes":-11490,"delayMs":0,"typingMs":0},{"id":"m_flat_sam_21","from":"them","kind":"text","body":"he already said that","offsetMinutes":-11489,"delayMs":0,"typingMs":0,"fromContactId":"c_sam"},{"id":"m_flat_priya_22","from":"them","kind":"text","body":"i know what he said","offsetMinutes":-11487,"delayMs":0,"typingMs":0,"fromContactId":"c_priya"},{"id":"m_flat_sam_23","from":"them","kind":"text","body":"then why did you ask him","offsetMinutes":-11486,"delayMs":0,"typingMs":0,"fromContactId":"c_sam"},{"id":"m_flat_priya_24","from":"them","kind":"text","body":"theres a parcel for you btw its behind the door","offsetMinutes":-11484,"delayMs":0,"typingMs":0,"fromContactId":"c_priya"},{"id":"m_flat_me_25","from":"me","kind":"text","body":"whos is it","offsetMinutes":-11482,"delayMs":0,"typingMs":0},{"id":"m_flat_priya_26","from":"them","kind":"text","body":"yours","offsetMinutes":-11480,"delayMs":0,"typingMs":0,"fromContactId":"c_priya"},{"id":"m_flat_me_27","from":"me","kind":"text","body":"i didnt order anything","offsetMinutes":-11479,"delayMs":0,"typingMs":0},{"id":"m_flat_priya_28","from":"them","kind":"text","body":"well its got your name on it","offsetMinutes":-11477,"delayMs":0,"typingMs":0,"fromContactId":"c_priya"},{"id":"m_flat_me_29","from":"me","kind":"text","body":"ok","offsetMinutes":-11476,"delayMs":0,"typingMs":0},{"id":"m_flat_sam_30","from":"them","kind":"text","body":"did you leave the light on out front again","offsetMinutes":-11474,"delayMs":0,"typingMs":0,"fromContactId":"c_sam"},{"id":"m_flat_me_31","from":"me","kind":"text","body":"no","offsetMinutes":-11472,"delayMs":0,"typingMs":0},{"id":"m_flat_sam_32","from":"them","kind":"text","body":"its been on all night","offsetMinutes":-11470,"delayMs":0,"typingMs":0,"fromContactId":"c_sam"},{"id":"m_flat_me_33","from":"me","kind":"text","body":"its on a sensor","offsetMinutes":-11469,"delayMs":0,"typingMs":0},{"id":"m_flat_sam_34","from":"them","kind":"text","body":"its been ON. all night.","offsetMinutes":-11468,"delayMs":0,"typingMs":0,"fromContactId":"c_sam"},{"id":"m_flat_me_35","from":"me","kind":"text","body":"then somethings setting it off","offsetMinutes":-11466,"delayMs":0,"typingMs":0},{"id":"m_flat_sam_36","from":"them","kind":"text","body":"cool. love that.","offsetMinutes":-11464,"delayMs":0,"typingMs":0,"fromContactId":"c_sam"},{"id":"m_flat_priya_37","from":"them","kind":"text","body":"foxes","offsetMinutes":-11462,"delayMs":0,"typingMs":0,"fromContactId":"c_priya"},{"id":"m_flat_sam_38","from":"them","kind":"text","body":"sure","offsetMinutes":-11461,"delayMs":0,"typingMs":0,"fromContactId":"c_sam"},{"id":"m_flat_priya_39","from":"them","kind":"text","body":"ren?","offsetMinutes":-8645,"delayMs":0,"typingMs":0,"fromContactId":"c_priya"},{"id":"m_flat_sam_40","from":"them","kind":"text","body":"is he with you","offsetMinutes":-8640,"delayMs":0,"typingMs":0,"fromContactId":"c_sam"}]},{"id":"b_dave_1","threadId":"t_dave","messages":[{"id":"m_dave_them_01","from":"them","kind":"text","body":"Hi Ren, can do Thursday between 12 and 4 for the boiler.","offsetMinutes":-18720,"delayMs":0,"typingMs":0},{"id":"m_dave_me_02","from":"me","kind":"text","body":"im at work thursday","offsetMinutes":-18709,"delayMs":0,"typingMs":0},{"id":"m_dave_them_03","from":"them","kind":"text","body":"Ok","offsetMinutes":-18703,"delayMs":0,"typingMs":0},{"id":"m_dave_them_04","from":"them","kind":"text","body":"Friday between 12 and 4?","offsetMinutes":-18686,"delayMs":0,"typingMs":0},{"id":"m_dave_me_05","from":"me","kind":"text","body":"same","offsetMinutes":-18679,"delayMs":0,"typingMs":0},{"id":"m_dave_them_06","from":"them","kind":"text","body":"I'll see what I can do","offsetMinutes":-18673,"delayMs":0,"typingMs":0},{"id":"m_dave_them_07","from":"them","kind":"text","body":"Sorry Ren — Thursday between 12 and 4?","offsetMinutes":-12960,"delayMs":0,"typingMs":0},{"id":"m_dave_me_08","from":"me","kind":"text","body":"dave","offsetMinutes":-12945,"delayMs":0,"typingMs":0},{"id":"m_dave_them_09","from":"them","kind":"text","body":"Ok","offsetMinutes":-12932,"delayMs":0,"typingMs":0},{"id":"m_dave_them_10","from":"them","kind":"text","body":"Thursday between 12 and 4?","offsetMinutes":-8940,"delayMs":0,"typingMs":0}]},{"id":"b_notify_1","threadId":"t_notify","messages":[{"id":"m_notify_them_01","from":"them","kind":"text","body":"Your verification code is 4417. Never share this code.","offsetMinutes":-10080,"delayMs":0,"typingMs":0},{"id":"m_notify_them_02","from":"them","kind":"text","body":"Your verification code is 8830. Never share this code.","offsetMinutes":-4320,"delayMs":0,"typingMs":0}]},{"id":"b_unknown_1","threadId":"t_unknown","messages":[{"id":"m_unknown_them_01","from":"them","kind":"text","body":"is this still ren's","offsetMinutes":-9180,"delayMs":0,"typingMs":0}],"next":"b_unknown_2"},{"id":"b_unknown_2","threadId":"t_unknown","next":"b_unknown_3","messages":[{"id":"m_unknown_photo_02","from":"them","kind":"photo","asset":"hall_01","offsetMinutes":-2,"live":true,"delayMs":5000,"typingMs":0}]},{"id":"b_unknown_3","threadId":"t_unknown","next":"b_unknown_4","messages":[{"id":"m_unknown_them_03","from":"them","kind":"text","body":"you left it on again","offsetMinutes":-1,"live":true,"delayMs":3200,"typingMs":1100},{"id":"m_unknown_them_04","from":"them","kind":"text","body":"are you home","offsetMinutes":0,"live":true,"delayMs":4200,"typingMs":900,"showTimestamp":true}]},{"id":"b_unknown_4","threadId":"t_unknown","messages":[{"id":"m_unknown_them_05","from":"them","kind":"text","body":"where did you go","offsetMinutes":0,"live":true,"delayMs":2000,"typingMs":900,"showTimestamp":true,"requiresFlags":["left_during_live"]},{"id":"m_unknown_them_06","from":"them","kind":"text","body":"you read them all","offsetMinutes":0,"live":true,"delayMs":7000,"typingMs":935},{"id":"m_unknown_them_07","from":"them","kind":"text","body":"six days of nothing and then all of it at once","offsetMinutes":0,"live":true,"delayMs":1800,"typingMs":2530},{"id":"m_unknown_them_08","from":"them","kind":"text","body":"ren doesnt read things twice","offsetMinutes":0,"live":true,"delayMs":2600,"typingMs":1540},{"id":"m_unknown_them_09","from":"them","kind":"text","body":"who is this","offsetMinutes":0,"live":true,"delayMs":5200,"typingMs":900,"showTimestamp":true,"emphasis":"pulse"}],"choices":[{"id":"c_found","label":"i found this phone","next":"b_end_found","setsFlags":["chose_found"]},{"id":"c_silence","label":"[say nothing]","next":"b_end_silence","setsFlags":["chose_silence"]},{"id":"c_delete","label":"[delete this conversation]","next":"b_end_delete","setsFlags":["chose_delete"]}]},{"id":"b_end_found","threadId":"t_unknown","messages":[{"id":"m_end_me_01","from":"me","kind":"text","body":"i found this phone","offsetMinutes":0,"live":true,"delayMs":0,"typingMs":0},{"id":"m_end_them_02","from":"them","kind":"text","body":"where","offsetMinutes":0,"live":true,"delayMs":2600,"typingMs":900},{"id":"m_end_them_03","from":"them","kind":"text","body":"dont put it down","offsetMinutes":0,"live":true,"delayMs":3400,"typingMs":900,"showTimestamp":true}]},{"id":"b_end_silence","threadId":"t_unknown","messages":[]},{"id":"b_end_delete","threadId":"t_unknown","messages":[{"id":"m_end_them_04","from":"them","kind":"text","body":"you deleted it","offsetMinutes":0,"live":true,"delayMs":0,"typingMs":900,"showTimestamp":true}]},{"id":"b_archive_1","threadId":"t_archive","messages":[{"id":"m_ar_01","from":"them","kind":"text","body":"is this still lauras","offsetMinutes":-20160,"delayMs":0,"typingMs":0},{"id":"m_ar_02","from":"me","kind":"text","body":"wrong number mate","offsetMinutes":-20140,"delayMs":0,"typingMs":0},{"id":"m_ar_03","from":"them","kind":"text","body":"ok","offsetMinutes":-20100,"delayMs":0,"typingMs":0},{"id":"m_ar_04","from":"them","kind":"text","body":"the light out front is on a sensor isnt it","offsetMinutes":-14400,"delayMs":0,"typingMs":0},{"id":"m_ar_05","from":"me","kind":"text","body":"who is this","offsetMinutes":-14380,"delayMs":0,"typingMs":0},{"id":"m_ar_06","from":"them","kind":"text","body":"you asked me that last time","offsetMinutes":-14360,"delayMs":0,"typingMs":0,"showTimestamp":true}]}],"endings":[{"id":"e_found","requiresFlags":["chose_found"],"beatId":"b_end_found","title":"Ending — found","body":"You told it where you were.\n\nIt never asked you to.","mechanic":"linear"},{"id":"e_silence","requiresFlags":["chose_silence"],"beatId":"b_end_silence","title":"Ending — silence","body":"It is still typing.\n\nIt has been typing for a while now.","mechanic":"hold"},{"id":"e_delete","requiresFlags":["chose_delete"],"beatId":"b_end_delete","title":"Ending — deleted","body":"It came back.\n\nIt was never in the phone.","mechanic":"reappear"},{"id":"e_unanswered","requiresFlags":["unanswered"],"beatId":"b_end_silence","title":"Ending — unanswered","body":"You never said anything at all.\n\nIt stayed for a hundred days anyway.","mechanic":"hold"}]};</script>
+<script>window.CONTENT={"cast":{"version":1,"cast":[{"id":"c_sam","displayName":"sam","thread":"t_flat","side":"them","capitalisation":"lower","punctuation":"sparse","voice":"blunt, escalates to capitals when annoyed, never apologises first","baseReplies":6},{"id":"c_priya","displayName":"priya","thread":"t_flat","side":"them","capitalisation":"lower","punctuation":"none","voice":"flat, factual, wins arguments by repeating herself","baseReplies":6},{"id":"c_mom","displayName":"Mom","thread":"t_mom","side":"them","capitalisation":"lower","punctuation":"none","voice":"asks the same question twice, never uses a question mark","baseReplies":5},{"id":"c_dave","displayName":"Dave","thread":"t_dave","side":"them","capitalisation":"sentence","punctuation":"full","voice":"the only character who writes in full sentences. Never normalise anyone to match him, and never normalise him down.","baseReplies":2},{"id":"c_notify","displayName":"Notify","thread":"t_notify","side":"them","capitalisation":"sentence","punctuation":"full","voice":"automated. Never varies. Does not know anyone is gone.","baseReplies":0},{"id":"c_unknown","displayName":"+44 7700 900931","thread":"t_unknown","side":"them","capitalisation":"lower","punctuation":"none","voice":"states things. Never asks twice. Quotes the player exactly, and to the wrong person -- it has read the other threads.","baseReplies":0}]},"templates":{"version":1,"templates":[{"id":"tpl_flat_chore","threadId":"t_flat","acts":[1,2],"phases":["day"],"weight":4,"once":false,"requiresFlags":[],"setsFlags":[],"slots":{"CHORE":["the bins","the recycling","the washing up","the front step"],"WHEN":["last week","two weeks ago","in january","before easter"]},"lines":[{"speaker":"c_sam","text":"did anyone do {CHORE}"},{"speaker":"c_priya","text":"not me"},{"speaker":"c_sam","text":"i did it {WHEN}"},{"speaker":"c_priya","text":"{WHEN} is when it was yours"},{"speaker":"c_sam","text":"thats not how it works"},{"speaker":"c_priya","text":"it is how it works"}],"choices":[{"id":"ch_ill_do_it","label":"ill do it","tells":"offered to do {CHORE}","memory":{"tag":"chore_promised","fragment":"you said youd do {CHORE}"}},{"id":"ch_not_mine","label":"not mine either","tells":"denied doing {CHORE}"}]},{"id":"tpl_flat_delivery","threadId":"t_flat","acts":[1,2],"phases":["day","night"],"weight":3,"once":false,"requiresFlags":[],"setsFlags":[],"slots":{"PLACE":["behind the door","on the stairs","in the porch","under the mat"],"THING":["a box","a jiffy bag","a parcel","something in a bin bag"]},"lines":[{"speaker":"c_priya","text":"theres {THING} {PLACE}"},{"speaker":"c_sam","text":"whos is it"},{"speaker":"c_priya","text":"no name on it"},{"speaker":"c_sam","text":"then its not ours"},{"speaker":"c_priya","text":"its been there since yesterday"}],"choices":[{"id":"ch_leave_it","label":"leave it","tells":"said to leave {THING}"},{"id":"ch_open_it","label":"open it","tells":"said to open {THING}","revealsClue":"clue_parcel","memory":{"tag":"parcel_opened","fragment":"you told us to open {THING}"}}]},{"id":"tpl_flat_heating","threadId":"t_flat","acts":[1,2],"phases":["night"],"weight":3,"once":false,"requiresFlags":[],"setsFlags":[],"slots":{"HOUR":["six","half five","four","some point in the night"]},"lines":[{"speaker":"c_sam","text":"the heating came on at {HOUR} again"},{"speaker":"c_priya","text":"thats the timer"},{"speaker":"c_sam","text":"who set the timer"},{"speaker":"c_priya","text":"it came like that"},{"speaker":"c_sam","text":"cool"}],"choices":[{"id":"ch_timer","label":"i didnt set it","tells":"denied setting the timer","revealsClue":"clue_heating","memory":{"tag":"timer_denied","fragment":"you said you didnt set it"}},{"id":"ch_shrug","label":"leave it","tells":"said to leave the heating"}]},{"id":"tpl_flat_noise","threadId":"t_flat","acts":[1,2],"phases":["night"],"weight":2,"once":false,"requiresFlags":[],"setsFlags":[],"slots":{"SOUND":["a bang","the pipes","someone on the stairs","a door"]},"lines":[{"speaker":"c_priya","text":"did anyone else hear {SOUND}"},{"speaker":"c_sam","text":"no"},{"speaker":"c_priya","text":"ok"},{"speaker":"c_sam","text":"it was probably the boiler"}],"choices":[{"id":"ch_heard_it","label":"i heard it","tells":"said he heard {SOUND}","revealsClue":"clue_noise","memory":{"tag":"noise_heard","fragment":"you said you heard {SOUND} too"}},{"id":"ch_nothing","label":"[say nothing]","tells":null}]},{"id":"tpl_flat_rota_again","threadId":"t_flat","acts":[1,2],"phases":["day"],"weight":2,"once":true,"requiresFlags":[],"setsFlags":["flat_rota_mentioned"],"slots":{},"lines":[{"speaker":"c_priya","text":"sam wheres the rota"},{"speaker":"c_sam","text":"on the fridge"},{"speaker":"c_priya","text":"its not on the fridge"},{"speaker":"c_sam","text":"then someone took it off the fridge"},{"speaker":"c_priya","text":"why would someone take a rota off a fridge"}],"choices":[{"id":"ch_rota_seen","label":"it was there yesterday","tells":"said the rota was there yesterday","revealsClue":"clue_rota"},{"id":"ch_rota_shrug","label":"make another one","tells":"told sam to make another rota"}]},{"id":"tpl_mom_car","threadId":"t_mom","acts":[1,2],"phases":["day"],"weight":3,"once":false,"requiresFlags":[],"setsFlags":[],"slots":{"PART":["the oil","the tyre pressure","the coolant","the wipers"],"PERSON":["dad","your uncle","the man at the garage"]},"lines":[{"speaker":"c_mom","text":"did you check {PART}"},{"speaker":"c_mom","text":"ren"},{"speaker":"c_mom","text":"{PERSON} says you have to do it before winter"}],"choices":[{"id":"ch_did_it","label":"yeah did it","tells":"said he checked {PART}","memory":{"tag":"car_claimed","fragment":"you told me youd checked {PART}"}},{"id":"ch_will_do","label":"ill sort it","tells":"said he would sort {PART}"}]},{"id":"tpl_mom_visit","threadId":"t_mom","acts":[1,2],"phases":["day","night"],"weight":3,"once":false,"requiresFlags":[],"setsFlags":[],"slots":{"WHEN":["sunday","the weekend","next weekend","saturday"],"FOOD":["a roast","too much food","that thing you like"]},"lines":[{"speaker":"c_mom","text":"are you coming {WHEN}"},{"speaker":"c_mom","text":"im doing {FOOD}"},{"speaker":"c_mom","text":"let me know either way"}],"choices":[{"id":"ch_coming","label":"yeah ill come","tells":"said he would come {WHEN}","memory":{"tag":"visit_promised","fragment":"you said you were coming {WHEN}"}},{"id":"ch_working","label":"im working","tells":"said he was working {WHEN}"}]},{"id":"tpl_mom_dad","threadId":"t_mom","acts":[1,2],"phases":["night"],"weight":2,"once":false,"requiresFlags":[],"setsFlags":[],"slots":{"THING":["the shed","the gutter","that hedge","the back gate"]},"lines":[{"speaker":"c_mom","text":"dad did {THING} today"},{"speaker":"c_mom","text":"he shouldnt be up a ladder"},{"speaker":"c_mom","text":"tell him"}],"choices":[{"id":"ch_tell_him","label":"ill ring him","tells":"said he would ring dad"}]},{"id":"tpl_mom_repeat","threadId":"t_mom","acts":[1,2],"phases":["night"],"weight":2,"once":false,"requiresFlags":[],"setsFlags":[],"slots":{},"lines":[{"speaker":"c_mom","text":"did you eat"},{"speaker":"c_mom","text":"ren"},{"speaker":"c_mom","text":"did you eat"}],"choices":[{"id":"ch_ate","label":"yeah","tells":"said he ate"}]},{"id":"tpl_dave_slot","threadId":"t_dave","acts":[1,2],"phases":["day"],"weight":3,"once":false,"requiresFlags":[],"setsFlags":[],"slots":{"DAY":["Monday","Tuesday","Wednesday","Thursday","Friday"],"WINDOW":["8 and 12","12 and 4","1 and 5","9 and 1"]},"lines":[{"speaker":"c_dave","text":"{DAY} between {WINDOW} for the boiler?"},{"speaker":"c_dave","text":"Let me know either way please."}],"choices":[{"id":"ch_dave_yes","label":"that works","tells":"agreed to {DAY}","memory":{"tag":"dave_agreed","fragment":"You said {DAY} was alright."}},{"id":"ch_dave_no","label":"im at work","tells":"said he was working {DAY}"}]},{"id":"tpl_dave_rent","threadId":"t_dave","acts":[1,2],"phases":["day"],"weight":2,"once":true,"requiresFlags":[],"setsFlags":["dave_rent_mentioned"],"slots":{},"lines":[{"speaker":"c_dave","text":"The rent went out fine this month, thanks Ren."},{"speaker":"c_dave","text":"I'll be in touch about the boiler."}],"choices":[{"id":"ch_rent_thanks","label":"cheers dave","tells":"thanked dave about the rent"}]},{"id":"tpl_dave_chase","threadId":"t_dave","acts":[1,2],"phases":["night"],"weight":2,"once":false,"requiresFlags":[],"setsFlags":[],"slots":{"DAY":["Monday","Tuesday","Thursday","Friday"]},"lines":[{"speaker":"c_dave","text":"Sorry to chase. Is {DAY} still alright?"}],"choices":[{"id":"ch_dave_ok","label":"yeah fine","tells":"confirmed {DAY} to dave"}]},{"id":"tpl_notify_code","threadId":"t_notify","acts":[1,2],"phases":["day","night"],"weight":2,"once":false,"requiresFlags":[],"setsFlags":[],"slots":{"CODE":["2291","5106","7734","4417","8830","6248"]},"lines":[{"speaker":"c_notify","text":"Your verification code is {CODE}. Never share this code."}],"choices":[]},{"id":"tpl_notify_login","threadId":"t_notify","acts":[1,2],"phases":["day","night"],"weight":4,"once":false,"requiresFlags":[],"setsFlags":[],"slots":{"PLACE":["a new device","an unrecognised browser","a new location"]},"lines":[{"speaker":"c_notify","text":"A sign-in from {PLACE} was approved."}],"choices":[{"id":"ch_login_me","label":"that was me","tells":"said the sign-in was him"},{"id":"ch_login_not_me","label":"that wasnt me","tells":"said the sign-in was not him","revealsClue":"clue_signin","memory":{"tag":"signin_denied","fragment":"you said it wasnt you"}}]},{"id":"tpl_flat_light","threadId":"t_flat","acts":[1,2],"phases":["night"],"weight":2,"once":false,"requiresFlags":[],"setsFlags":[],"slots":{"WHEN":["all night","since about three","again","the whole time"]},"lines":[{"speaker":"c_sam","text":"the front light was on {WHEN}"},{"speaker":"c_priya","text":"its a sensor"},{"speaker":"c_sam","text":"i know what it is"},{"speaker":"c_priya","text":"then somethings setting it off"}],"choices":[{"id":"ch_light_look","label":"did anyone look","tells":"asked if anyone looked at the light","revealsClue":"clue_light"},{"id":"ch_light_foxes","label":"foxes","tells":"blamed foxes"}]},{"id":"tpl_flat_shopping","threadId":"t_flat","acts":[1,2],"phases":["day"],"weight":3,"once":false,"requiresFlags":[],"setsFlags":[],"slots":{"ITEM":["bread","washing up liquid","bin bags","loo roll"],"SHOP":["the co op","the big tesco","the one by the station"]},"lines":[{"speaker":"c_sam","text":"is anyone near {SHOP}"},{"speaker":"c_priya","text":"no"},{"speaker":"c_sam","text":"we need {ITEM}"},{"speaker":"c_priya","text":"we always need {ITEM}"}],"choices":[{"id":"ch_shop_get","label":"ill get it","tells":"said he would get {ITEM}"},{"id":"ch_shop_not","label":"not out today","tells":"said he was not going out"}]},{"id":"tpl_flat_tv","threadId":"t_flat","acts":[1,2],"phases":["night"],"weight":2,"once":false,"requiresFlags":[],"setsFlags":[],"slots":{"THING":["the second episode","the one with the boat","that documentary"]},"lines":[{"speaker":"c_priya","text":"did anyone watch {THING} without me"},{"speaker":"c_sam","text":"no"},{"speaker":"c_priya","text":"its on the continue watching"},{"speaker":"c_sam","text":"that could be anyone"}],"choices":[{"id":"ch_tv_me","label":"that was me","tells":"admitted watching {THING}"},{"id":"ch_tv_not","label":"wasnt me","tells":"denied watching {THING}"}]},{"id":"tpl_mom_weather","threadId":"t_mom","acts":[1,2],"phases":["day","night"],"weight":3,"once":false,"requiresFlags":[],"setsFlags":[],"slots":{"WEATHER":["frost","rain all week","wind","it going cold"]},"lines":[{"speaker":"c_mom","text":"theyre saying {WEATHER}"},{"speaker":"c_mom","text":"have you got a proper coat"}],"choices":[{"id":"ch_coat_yes","label":"yeah ive got one","tells":"said he had a coat"},{"id":"ch_coat_no","label":"ill sort it","tells":"said he would sort a coat"}]},{"id":"tpl_dave_inspection","threadId":"t_dave","acts":[1,2],"phases":["day"],"weight":2,"once":true,"requiresFlags":[],"setsFlags":["dave_inspection_mentioned"],"slots":{"WHEN":["the end of the month","some point in November","after the boiler"]},"lines":[{"speaker":"c_dave","text":"I need to do the annual inspection {WHEN}."},{"speaker":"c_dave","text":"It takes about twenty minutes."}],"choices":[{"id":"ch_insp_ok","label":"thats fine","tells":"agreed to the inspection {WHEN}"},{"id":"ch_insp_later","label":"can it wait","tells":"asked dave to delay the inspection"}]},{"id":"tpl_mom_recall_visit","threadId":"t_mom","acts":[2,2],"phases":["day","night"],"weight":3,"once":false,"requiresFlags":[],"setsFlags":[],"requiresMemory":"visit_promised","slots":{},"lines":[{"speaker":"c_mom","text":"{MEMORY}"},{"speaker":"c_mom","text":"i did the food"}],"choices":[{"id":"ch_r_sorry","label":"i know","tells":"acknowledged missing it","memory":{"tag":"said_i_know","fragment":"you said you knew"}},{"id":"ch_r_deny","label":"i never said that","tells":"denied saying it","memory":{"tag":"denied_memory","fragment":"you said you never said it"}}]},{"id":"tpl_mom_recall_car","threadId":"t_mom","acts":[2,2],"phases":["day"],"weight":3,"once":false,"requiresFlags":[],"setsFlags":[],"requiresMemory":"car_claimed","slots":{},"lines":[{"speaker":"c_mom","text":"{MEMORY}"},{"speaker":"c_mom","text":"dad looked at it and you hadnt"}],"choices":[{"id":"ch_r_car_ok","label":"i forgot","tells":"admitted forgetting"},{"id":"ch_r_car_deny","label":"i did check it","tells":"insisted he checked","memory":{"tag":"denied_memory","fragment":"you said you never said it"}}]},{"id":"tpl_flat_recall_chore","threadId":"t_flat","acts":[2,2],"phases":["day"],"weight":3,"once":false,"requiresFlags":[],"setsFlags":[],"requiresMemory":"chore_promised","slots":{},"lines":[{"speaker":"c_sam","text":"{MEMORY}"},{"speaker":"c_priya","text":"he did say that"},{"speaker":"c_sam","text":"when though"}],"choices":[{"id":"ch_r_chore_soon","label":"ill do it tonight","tells":"promised again"},{"id":"ch_r_chore_no","label":"i never said that","tells":"denied saying it","memory":{"tag":"denied_memory","fragment":"you said you never said it"}}]},{"id":"tpl_flat_recall_parcel","threadId":"t_flat","acts":[2,2],"phases":["night"],"weight":3,"once":false,"requiresFlags":[],"setsFlags":[],"requiresMemory":"parcel_opened","slots":{},"lines":[{"speaker":"c_priya","text":"{MEMORY}"},{"speaker":"c_priya","text":"there wasnt anything in it"},{"speaker":"c_sam","text":"there wasnt anything in it when i looked either"}],"choices":[{"id":"ch_r_parcel_who","label":"who looked first","tells":"asked who looked first"},{"id":"ch_r_parcel_drop","label":"forget it","tells":"dropped it"}]},{"id":"tpl_dave_recall_slot","threadId":"t_dave","acts":[2,2],"phases":["day"],"weight":2,"once":false,"requiresFlags":[],"setsFlags":[],"requiresMemory":"dave_agreed","slots":{},"lines":[{"speaker":"c_dave","text":"{MEMORY}"},{"speaker":"c_dave","text":"Nobody was in. I waited twenty minutes."}],"choices":[{"id":"ch_r_dave_sorry","label":"sorry dave","tells":"apologised to dave"},{"id":"ch_r_dave_home","label":"i was in","tells":"insisted he was home"}]},{"id":"tpl_unknown_recall_mom","threadId":"t_unknown","acts":[2,2],"phases":["night"],"weight":4,"once":false,"requiresFlags":[],"setsFlags":[],"requiresMemory":"visit_promised","slots":{},"lines":[{"speaker":"c_unknown","text":"{MEMORY}"},{"speaker":"c_unknown","text":"you didnt"}],"choices":[{"id":"ch_r_u_who","label":"how do you know that","tells":"asked how it knew","memory":{"tag":"asked_how","fragment":"you asked how i knew"}},{"id":"ch_r_u_none","label":"[say nothing]","tells":null}]},{"id":"tpl_unknown_recall_flat","threadId":"t_unknown","acts":[2,2],"phases":["day","night"],"weight":4,"once":false,"requiresFlags":[],"setsFlags":[],"requiresMemory":"chore_promised","slots":{},"lines":[{"speaker":"c_unknown","text":"{MEMORY}"},{"speaker":"c_unknown","text":"thats not something ren says"}],"choices":[{"id":"ch_r_u_ren","label":"im ren","tells":"claimed to be ren","memory":{"tag":"claimed_to_be_ren","fragment":"you said you were ren"}},{"id":"ch_r_u_quiet","label":"[say nothing]","tells":null}]},{"id":"tpl_unknown_recall_denial","threadId":"t_unknown","acts":[2,2],"phases":["night"],"weight":5,"once":false,"requiresFlags":[],"setsFlags":[],"requiresMemory":"denied_memory","slots":{},"lines":[{"speaker":"c_unknown","text":"{MEMORY}"},{"speaker":"c_unknown","text":"you did"}],"choices":[{"id":"ch_r_u_stop","label":"stop","tells":"told it to stop","memory":{"tag":"told_it_stop","fragment":"you told me to stop"}},{"id":"ch_r_u_watch","label":"are you reading these","tells":"asked if it was reading","memory":{"tag":"asked_reading","fragment":"you asked if i was reading these"}}]},{"id":"tpl_flat_recall_noise","threadId":"t_flat","acts":[2,2],"phases":["night"],"weight":3,"once":false,"requiresFlags":[],"setsFlags":[],"requiresMemory":"noise_heard","slots":{},"lines":[{"speaker":"c_priya","text":"{MEMORY}"},{"speaker":"c_priya","text":"you were the only one who did"}],"choices":[{"id":"ch_r_noise_again","label":"i hear it most nights","tells":"said he hears it most nights","memory":{"tag":"hears_it","fragment":"you said you hear it most nights"}},{"id":"ch_r_noise_drop","label":"i was probably wrong","tells":"walked it back"}]},{"id":"tpl_unknown_recall_timer","threadId":"t_unknown","acts":[2,2],"phases":["night"],"weight":4,"once":false,"requiresFlags":[],"setsFlags":[],"requiresMemory":"timer_denied","slots":{},"lines":[{"speaker":"c_unknown","text":"{MEMORY}"},{"speaker":"c_unknown","text":"somebody set it"}],"choices":[{"id":"ch_r_t_who","label":"who are you","tells":"asked who it was"},{"id":"ch_r_t_none","label":"[say nothing]","tells":null}]},{"id":"tpl_unknown_recall_signin","threadId":"t_unknown","acts":[2,2],"phases":["day","night"],"weight":5,"once":false,"requiresFlags":[],"setsFlags":[],"requiresMemory":"signin_denied","slots":{},"lines":[{"speaker":"c_unknown","text":"{MEMORY}"},{"speaker":"c_unknown","text":"it wasnt"}],"choices":[{"id":"ch_r_s_stop","label":"get off his account","tells":"told it to get off the account","memory":{"tag":"told_it_stop","fragment":"you told me to stop"}},{"id":"ch_r_s_none","label":"[say nothing]","tells":null}]},{"id":"tpl_unknown_recall_ren","threadId":"t_unknown","acts":[2,2],"phases":["night"],"weight":6,"once":false,"requiresFlags":[],"setsFlags":[],"requiresMemory":"claimed_to_be_ren","slots":{},"lines":[{"speaker":"c_unknown","text":"{MEMORY}"},{"speaker":"c_unknown","text":"ren stopped answering on the tuesday"},{"speaker":"c_unknown","text":"you started on the sunday"}],"choices":[{"id":"ch_r_ren_how","label":"how would you know that","tells":"asked how it knew the dates","memory":{"tag":"asked_how","fragment":"you asked how i knew"}},{"id":"ch_r_ren_none","label":"[say nothing]","tells":null}]},{"id":"tpl_unknown_late_how","threadId":"t_unknown","acts":[2,2],"days":[41,60],"phases":["night"],"weight":5,"once":false,"requiresFlags":[],"setsFlags":[],"requiresMemory":"asked_how","slots":{},"lines":[{"speaker":"c_unknown","text":"{MEMORY}"},{"speaker":"c_unknown","text":"the same way you do"},{"speaker":"c_unknown","text":"im reading them"}],"choices":[{"id":"ch_l_from_where","label":"from where","tells":"asked where it was reading from","memory":{"tag":"asked_where","fragment":"you asked where"}},{"id":"ch_l_none1","label":"[say nothing]","tells":null}]},{"id":"tpl_unknown_late_stop","threadId":"t_unknown","acts":[2,2],"days":[41,60],"phases":["day","night"],"weight":5,"once":false,"requiresFlags":[],"setsFlags":[],"requiresMemory":"told_it_stop","slots":{},"lines":[{"speaker":"c_unknown","text":"{MEMORY}"},{"speaker":"c_unknown","text":"you didnt put it down though"}],"choices":[{"id":"ch_l_put_down","label":"im putting it down now","tells":"said he was putting it down","memory":{"tag":"said_put_down","fragment":"you said you were putting it down"}},{"id":"ch_l_none2","label":"[say nothing]","tells":null}]},{"id":"tpl_unknown_late_reading","threadId":"t_unknown","acts":[2,2],"days":[41,60],"phases":["night"],"weight":5,"once":false,"requiresFlags":[],"setsFlags":[],"requiresMemory":"asked_reading","slots":{},"lines":[{"speaker":"c_unknown","text":"{MEMORY}"},{"speaker":"c_unknown","text":"you read them first"},{"speaker":"c_unknown","text":"all of them, in one night, six days late"}],"choices":[{"id":"ch_l_so","label":"so did you","tells":"said it had read them too"},{"id":"ch_l_none3","label":"[say nothing]","tells":null}]},{"id":"tpl_unknown_late_putdown","threadId":"t_unknown","acts":[2,2],"days":[41,60],"phases":["night"],"weight":6,"once":false,"requiresFlags":[],"setsFlags":[],"requiresMemory":"said_put_down","slots":{},"lines":[{"speaker":"c_unknown","text":"{MEMORY}"},{"speaker":"c_unknown","text":"that was four minutes ago"}],"choices":[{"id":"ch_l_still_here","label":"im still here","tells":"admitted he was still there"},{"id":"ch_l_none4","label":"[say nothing]","tells":null}]},{"id":"tpl_unknown_late_where","threadId":"t_unknown","acts":[2,2],"days":[41,60],"phases":["night"],"weight":6,"once":false,"requiresFlags":[],"setsFlags":[],"requiresMemory":"asked_where","slots":{},"lines":[{"speaker":"c_unknown","text":"{MEMORY}"},{"speaker":"c_unknown","text":"the front light is on a sensor"}],"choices":[{"id":"ch_l_outside","label":"are you outside","tells":"asked if it was outside"},{"id":"ch_l_none5","label":"[say nothing]","tells":null}]},{"id":"tpl_flat_late_hears","threadId":"t_flat","acts":[2,2],"days":[41,60],"phases":["night"],"weight":3,"once":false,"requiresFlags":[],"setsFlags":[],"requiresMemory":"hears_it","slots":{},"lines":[{"speaker":"c_sam","text":"{MEMORY}"},{"speaker":"c_sam","text":"priya moved out on the weekend"},{"speaker":"c_sam","text":"im asking because im on my own now"}],"choices":[{"id":"ch_l_sam_ok","label":"are you alright","tells":"asked if sam was alright"},{"id":"ch_l_sam_none","label":"[say nothing]","tells":null}]},{"id":"tpl_mom_late_knew","threadId":"t_mom","acts":[2,2],"days":[41,60],"phases":["day"],"weight":3,"once":false,"requiresFlags":[],"setsFlags":[],"requiresMemory":"said_i_know","slots":{},"lines":[{"speaker":"c_mom","text":"{MEMORY}"},{"speaker":"c_mom","text":"you dont sound like you"}],"choices":[{"id":"ch_l_tired","label":"im just tired","tells":"said he was tired"},{"id":"ch_l_mom_none","label":"[say nothing]","tells":null}]},{"id":"tpl_unknown_late_contradiction","threadId":"t_unknown","acts":[2,2],"days":[45,60],"phases":["night"],"weight":8,"once":true,"requiresFlags":[],"setsFlags":["contradicted"],"requiresMemory":["claimed_to_be_ren","denied_memory"],"slots":{},"lines":[{"speaker":"c_unknown","text":"{MEMORY}"},{"speaker":"c_unknown","text":"{MEMORY2}"},{"speaker":"c_unknown","text":"both of those cant be true"}],"choices":[{"id":"ch_l_which","label":"which one do you think it is","tells":"asked which it believed"},{"id":"ch_l_none6","label":"[say nothing]","tells":null}]},{"id":"tpl_p_light","threadId":"t_unknown","acts":[3,3],"days":[61,100],"phases":["night"],"weight":5,"once":true,"requiresFlags":[],"setsFlags":[],"slots":{},"lines":[{"speaker":"c_unknown","text":"the front light came on at ten past three"},{"speaker":"c_unknown","text":"it was me"}],"choices":[{"id":"ch_p_light","label":"what were you doing there","tells":"asked what it was doing there"},{"id":"ch_p_none1","label":"[say nothing]","tells":null}],"requiresClue":"clue_light"},{"id":"tpl_p_parcel","threadId":"t_unknown","acts":[3,3],"days":[61,100],"phases":["day","night"],"weight":4,"once":true,"requiresFlags":[],"setsFlags":[],"slots":{},"lines":[{"speaker":"c_unknown","text":"the box under the mat was mine"},{"speaker":"c_unknown","text":"i wanted to know if youd open it"}],"choices":[{"id":"ch_p_parcel","label":"why","tells":"asked why"},{"id":"ch_p_none2","label":"[say nothing]","tells":null}],"requiresClue":"clue_parcel"},{"id":"tpl_p_heating","threadId":"t_unknown","acts":[3,3],"days":[61,100],"phases":["night"],"weight":4,"once":true,"requiresFlags":[],"setsFlags":[],"slots":{},"lines":[{"speaker":"c_unknown","text":"the heating comes on at four because i set it"},{"speaker":"c_unknown","text":"the flat is warm when i get there"}],"choices":[{"id":"ch_p_heat","label":"when do you get there","tells":"asked when it gets there"},{"id":"ch_p_none3","label":"[say nothing]","tells":null}],"requiresClue":"clue_heating"},{"id":"tpl_p_rota","threadId":"t_unknown","acts":[3,3],"days":[61,100],"phases":["day"],"weight":4,"once":true,"requiresFlags":[],"setsFlags":[],"slots":{},"lines":[{"speaker":"c_unknown","text":"i took the rota off the fridge"},{"speaker":"c_unknown","text":"your handwriting is on it"}],"choices":[{"id":"ch_p_rota","label":"thats not mine","tells":"denied the handwriting"},{"id":"ch_p_none4","label":"[say nothing]","tells":null}],"requiresClue":"clue_rota"},{"id":"tpl_p_noise","threadId":"t_unknown","acts":[3,3],"days":[61,100],"phases":["night"],"weight":5,"once":true,"requiresFlags":[],"setsFlags":[],"slots":{},"lines":[{"speaker":"c_unknown","text":"you were right about the stairs"},{"speaker":"c_unknown","text":"priya heard me on the ninth"}],"choices":[{"id":"ch_p_noise","label":"is that why she left","tells":"asked if that was why priya left"},{"id":"ch_p_none5","label":"[say nothing]","tells":null}],"requiresClue":"clue_noise"},{"id":"tpl_p_signin","threadId":"t_unknown","acts":[3,3],"days":[61,100],"phases":["day","night"],"weight":5,"once":true,"requiresFlags":[],"setsFlags":[],"slots":{},"lines":[{"speaker":"c_unknown","text":"the sign in was from the kitchen"},{"speaker":"c_unknown","text":"the codes come to this phone"}],"choices":[{"id":"ch_p_signin","label":"youre in the flat","tells":"said it was in the flat"},{"id":"ch_p_none6","label":"[say nothing]","tells":null}],"requiresClue":"clue_signin"},{"id":"tpl_p_close_1","threadId":"t_unknown","acts":[3,3],"days":[61,75],"phases":["night"],"weight":3,"once":false,"requiresFlags":[],"setsFlags":[],"slots":{},"lines":[{"speaker":"c_unknown","text":"youve had that phone ninety days"},{"speaker":"c_unknown","text":"you havent charged it anywhere new"}],"choices":[{"id":"ch_p_c1","label":"how would you know","tells":"asked how it knew"},{"id":"ch_p_none7","label":"[say nothing]","tells":null}]},{"id":"tpl_p_close_2","threadId":"t_unknown","acts":[3,3],"days":[70,90],"phases":["night"],"weight":4,"once":false,"requiresFlags":[],"setsFlags":[],"slots":{},"lines":[{"speaker":"c_unknown","text":"the screen is the brightest thing in that room"}],"choices":[{"id":"ch_p_c2","label":"which room","tells":"asked which room","memory":{"tag":"asked_room","fragment":"you asked which room"}},{"id":"ch_p_none8","label":"[say nothing]","tells":null}]},{"id":"tpl_p_room","threadId":"t_unknown","acts":[3,3],"days":[72,100],"phases":["night"],"weight":5,"once":false,"requiresFlags":[],"setsFlags":[],"slots":{},"lines":[{"speaker":"c_unknown","text":"the one youre in","emphasis":"pulse"}],"choices":[{"id":"ch_p_r1","label":"im putting it down","tells":"said he was putting it down"},{"id":"ch_p_none9","label":"[say nothing]","tells":null}],"requiresMemory":"asked_room","quotesMemory":false},{"id":"tpl_p_close_3","threadId":"t_unknown","acts":[3,3],"days":[85,100],"phases":["night"],"weight":5,"once":false,"requiresFlags":[],"setsFlags":[],"slots":{},"lines":[{"speaker":"c_unknown","text":"you read these the second they arrive now"},{"speaker":"c_unknown","text":"you didnt used to"}],"choices":[{"id":"ch_p_c3","label":"im not ren","tells":"admitted he was not ren","memory":{"tag":"admitted_not_ren","fragment":"you said you werent ren"}},{"id":"ch_p_none10","label":"[say nothing]","tells":null}]},{"id":"tpl_p_notren","threadId":"t_unknown","acts":[3,3],"days":[86,100],"phases":["day","night"],"weight":6,"once":false,"requiresFlags":[],"setsFlags":[],"slots":{},"lines":[{"speaker":"c_unknown","text":"i know"},{"speaker":"c_unknown","text":"i stopped asking on the fourteenth"}],"choices":[{"id":"ch_p_n1","label":"what happened to ren","tells":"asked what happened to ren"},{"id":"ch_p_none11","label":"[say nothing]","tells":null}],"requiresMemory":"admitted_not_ren","quotesMemory":false},{"id":"tpl_p_final","threadId":"t_unknown","acts":[3,3],"days":[96,100],"phases":["night"],"weight":9,"once":true,"requiresFlags":[],"setsFlags":[],"slots":{},"lines":[{"speaker":"c_unknown","text":"ninety nine days"},{"speaker":"c_unknown","text":"you could have put it down on any of them"}],"choices":[{"id":"ch_p_f1","label":"i couldnt","tells":"said he could not put it down"},{"id":"ch_p_none12","label":"[say nothing]","tells":null}]},{"id":"tpl_flat_p_alone","threadId":"t_flat","acts":[3,3],"days":[61,100],"phases":["night"],"weight":2,"once":true,"requiresFlags":[],"setsFlags":[],"slots":{},"lines":[{"speaker":"c_sam","text":"im giving notice on the flat"},{"speaker":"c_sam","text":"you can keep the deposit"}],"choices":[{"id":"ch_p_sam","label":"where will you go","tells":"asked where sam would go"},{"id":"ch_p_sam_none","label":"[say nothing]","tells":null}]},{"id":"tpl_mom_p_stop","threadId":"t_mom","acts":[3,3],"days":[61,100],"phases":["day"],"weight":2,"once":true,"requiresFlags":[],"setsFlags":[],"slots":{},"lines":[{"speaker":"c_mom","text":"i rang the flat"},{"speaker":"c_mom","text":"sam says he hasnt seen you since october"}],"choices":[{"id":"ch_p_mom","label":"im here","tells":"told mom he was there"},{"id":"ch_p_mom_none","label":"[say nothing]","tells":null}]},{"id":"tpl_p_daily_seen","threadId":"t_unknown","acts":[3,3],"days":[61,100],"phases":["day"],"weight":4,"once":false,"requiresFlags":[],"setsFlags":[],"slots":{"THING":["the kettle","the hall light","the back door","the tap"]},"lines":[{"speaker":"c_unknown","text":"{THING} was still on this morning"}],"choices":[{"id":"ch_p_d1","label":"i turned it off","tells":"said he turned it off"},{"id":"ch_p_d1_none","label":"[say nothing]","tells":null}]},{"id":"tpl_p_daily_count","threadId":"t_unknown","acts":[3,3],"days":[61,100],"phases":["day"],"weight":4,"once":false,"requiresFlags":[],"setsFlags":[],"slots":{"N":["four","nine","twelve","twenty six"]},"lines":[{"speaker":"c_unknown","text":"youve read this {N} seconds after i sent it"}],"choices":[{"id":"ch_p_d2","label":"stop counting","tells":"told it to stop counting"},{"id":"ch_p_d2_none","label":"[say nothing]","tells":null}]},{"id":"tpl_p_daily_quiet","threadId":"t_unknown","acts":[3,3],"days":[61,100],"phases":["day","night"],"weight":3,"once":false,"requiresFlags":[],"setsFlags":[],"slots":{"WHEN":["last night","this morning","at four","on the stairs"]},"lines":[{"speaker":"c_unknown","text":"i was there {WHEN}"}],"choices":[{"id":"ch_p_d3","label":"i didnt see you","tells":"said he did not see it"},{"id":"ch_p_d3_none","label":"[say nothing]","tells":null}]},{"id":"tpl_p_nightly","threadId":"t_unknown","acts":[3,3],"days":[61,100],"phases":["night"],"weight":3,"once":false,"requiresFlags":[],"setsFlags":[],"slots":{"THING":["the sensor","the boiler","the front step","the landing"]},"lines":[{"speaker":"c_unknown","text":"{THING} again"}],"choices":[{"id":"ch_p_d4","label":"what about it","tells":"asked what about it"},{"id":"ch_p_d4_none","label":"[say nothing]","tells":null}]},{"id":"tpl_flat_game","threadId":"t_flat","acts":[1,2],"phases":["night"],"weight":3,"once":false,"requiresFlags":[],"setsFlags":[],"slots":{},"lines":[{"speaker":"c_sam","text":"im bored. guess my number"},{"speaker":"c_sam","kind":"game","game":"guess","text":""},{"speaker":"c_priya","text":"sam youre thirty two"}],"choices":[{"id":"ch_g_play","label":"go on then","tells":"played sams game"},{"id":"ch_g_no","label":"im not playing","tells":"refused to play"}]},{"id":"tpl_p_game","threadId":"t_unknown","acts":[3,3],"days":[61,100],"phases":["night"],"weight":4,"once":true,"requiresFlags":[],"setsFlags":[],"slots":{},"lines":[{"speaker":"c_unknown","text":"sam used to make you play this"},{"speaker":"c_unknown","kind":"game","game":"guess","text":""},{"speaker":"c_unknown","text":"i already know which one youll pick first"}],"choices":[{"id":"ch_p_g1","label":"how","tells":"asked how it knew the number"},{"id":"ch_p_g_none","label":"[say nothing]","tells":null}]},{"id":"tpl_p_memo","threadId":"t_unknown","acts":[3,3],"days":[61,100],"phases":["night"],"weight":5,"once":true,"requiresFlags":[],"setsFlags":[],"slots":{},"lines":[{"speaker":"c_unknown","text":"i recorded it"},{"speaker":"c_unknown","kind":"audio","asset":"vm_01","durationMs":7000,"text":""},{"speaker":"c_unknown","text":"listen to the middle of it"}],"choices":[{"id":"ch_p_memo","label":"thats you breathing","tells":"said it was breathing"},{"id":"ch_p_memo_none","label":"[say nothing]","tells":null}]},{"id":"tpl_p_spot","threadId":"t_unknown","acts":[3,3],"days":[61,100],"phases":["night"],"weight":5,"once":true,"requiresFlags":[],"setsFlags":[],"slots":{},"lines":[{"speaker":"c_unknown","text":"i took another one"},{"speaker":"c_unknown","kind":"game","game":"spot","text":""},{"speaker":"c_unknown","text":"you left it there"}],"choices":[{"id":"ch_p_spot","label":"thats not mine","tells":"denied the bag was his"},{"id":"ch_p_spot_none","label":"[say nothing]","tells":null}]},{"id":"tpl_p_recall","threadId":"t_unknown","acts":[2,3],"phases":["night"],"weight":4,"once":false,"requiresFlags":[],"setsFlags":[],"slots":{},"lines":[{"speaker":"c_unknown","text":"lets see if you remember"},{"speaker":"c_unknown","kind":"game","game":"recall","text":""}],"choices":[{"id":"ch_p_recall_ok","label":"i remember","tells":"said he remembered","memory":{"tag":"said_remembers","fragment":"you said you remembered"}},{"id":"ch_p_recall_no","label":"stop doing this","tells":"asked it to stop"},{"id":"ch_p_recall_none","label":"[say nothing]","tells":null}]},{"id":"tpl_flat_match","threadId":"t_flat","acts":[1,2],"phases":["night"],"weight":3,"once":false,"requiresFlags":[],"setsFlags":[],"slots":{},"lines":[{"speaker":"c_priya","text":"sam found a thing. pairs. its stupid"},{"speaker":"c_priya","kind":"game","game":"match","text":""},{"speaker":"c_sam","text":"its not stupid youre just slow"}],"choices":[{"id":"ch_m_play","label":"one go","tells":"played the pairs game","memory":{"tag":"played_pairs","fragment":"you said one go"}},{"id":"ch_m_slow","label":"priya is slow","tells":"took sams side"},{"id":"ch_m_none","label":"[say nothing]","tells":null}]},{"id":"tpl_p_recall_back","threadId":"t_unknown","acts":[3,3],"phases":["night"],"weight":5,"once":true,"requiresMemory":"said_remembers","requiresFlags":[],"setsFlags":[],"slots":{},"lines":[{"speaker":"c_unknown","text":"{MEMORY}"},{"speaker":"c_unknown","text":"you didnt"}],"choices":[{"id":"ch_p_rb_did","label":"i did","tells":"insisted he remembered"},{"id":"ch_p_rb_none","label":"[say nothing]","tells":null}]},{"id":"tpl_flat_match_back","threadId":"t_flat","acts":[2,2],"phases":["night"],"weight":4,"once":true,"requiresMemory":"played_pairs","requiresFlags":[],"setsFlags":[],"slots":{},"lines":[{"speaker":"c_sam","text":"{MEMORY} and then you went quiet for an hour"},{"speaker":"c_priya","text":"he does that now"}],"choices":[{"id":"ch_m_back","label":"i was doing something","tells":"said he was busy"},{"id":"ch_m_back_none","label":"[say nothing]","tells":null}]}]},"ladder":{"version":1,"phaseWindowMs":600000,"fastWindowMs":30000,"acts":[{"id":1,"name":"normal","days":[1,20],"mechanic":"decay","note":"Twenty days of nothing being wrong. The player must have normal to lose. The endpoint is literal: by day 20 the reply budget is spent, so openers still fire and nothing is answered -- the same conversations as day 2, truncated to their first line or two."},{"id":2,"name":"memory","days":[21,60],"mechanic":"recall","note":"Reads lastToldByRen and cluesFound. NO DAYS AUTHORED YET -- declared so Act I has somewhere to write to, per D27."},{"id":3,"name":"presence","days":[61,100],"mechanic":"presence","note":"The clues pay off. Every confirmation is that someone was there. A clue never found is never confirmed, and the game never says so."}],"days":[{"day":1,"act":1,"pressure":0.0,"replyBudget":1.0,"dayMessages":8,"nightMessages":6,"authored":true},{"day":2,"act":1,"pressure":0.0,"replyBudget":1.0,"dayMessages":8,"nightMessages":6},{"day":3,"act":1,"pressure":0.02,"replyBudget":0.95,"dayMessages":8,"nightMessages":6},{"day":4,"act":1,"pressure":0.04,"replyBudget":0.9,"dayMessages":7,"nightMessages":6},{"day":5,"act":1,"pressure":0.06,"replyBudget":0.85,"dayMessages":7,"nightMessages":5},{"day":6,"act":1,"pressure":0.08,"replyBudget":0.75,"dayMessages":7,"nightMessages":5},{"day":7,"act":1,"pressure":0.1,"replyBudget":0.7,"dayMessages":6,"nightMessages":5},{"day":8,"act":1,"pressure":0.12,"replyBudget":0.6,"dayMessages":6,"nightMessages":4},{"day":9,"act":1,"pressure":0.14,"replyBudget":0.55,"dayMessages":6,"nightMessages":4},{"day":10,"act":1,"pressure":0.16,"replyBudget":0.45,"dayMessages":5,"nightMessages":4},{"day":11,"act":1,"pressure":0.174,"replyBudget":0.42,"dayMessages":5,"nightMessages":4},{"day":12,"act":1,"pressure":0.188,"replyBudget":0.38,"dayMessages":5,"nightMessages":4},{"day":13,"act":1,"pressure":0.202,"replyBudget":0.34,"dayMessages":5,"nightMessages":4},{"day":14,"act":1,"pressure":0.216,"replyBudget":0.3,"dayMessages":4,"nightMessages":4},{"day":15,"act":1,"pressure":0.23,"replyBudget":0.26,"dayMessages":4,"nightMessages":3},{"day":16,"act":1,"pressure":0.244,"replyBudget":0.22,"dayMessages":4,"nightMessages":3},{"day":17,"act":1,"pressure":0.258,"replyBudget":0.18,"dayMessages":4,"nightMessages":3},{"day":18,"act":1,"pressure":0.272,"replyBudget":0.14,"dayMessages":4,"nightMessages":3},{"day":19,"act":1,"pressure":0.286,"replyBudget":0.1,"dayMessages":3,"nightMessages":3},{"day":20,"act":1,"pressure":0.3,"replyBudget":0.06,"dayMessages":3,"nightMessages":3},{"day":21,"act":2,"pressure":0.3,"replyBudget":0.04,"recallWeight":1.0,"dayMessages":4,"nightMessages":3,"recallChance":0.25},{"day":22,"act":2,"pressure":0.32,"replyBudget":0.04,"recallWeight":1.35,"dayMessages":4,"nightMessages":3,"recallChance":0.265},{"day":23,"act":2,"pressure":0.34,"replyBudget":0.04,"recallWeight":1.7,"dayMessages":4,"nightMessages":3,"recallChance":0.28},{"day":24,"act":2,"pressure":0.36,"replyBudget":0.04,"recallWeight":2.05,"dayMessages":4,"nightMessages":3,"recallChance":0.295},{"day":25,"act":2,"pressure":0.38,"replyBudget":0.04,"recallWeight":2.4,"dayMessages":4,"nightMessages":3,"recallChance":0.31},{"day":26,"act":2,"pressure":0.4,"replyBudget":0.04,"recallWeight":2.75,"dayMessages":4,"nightMessages":3,"recallChance":0.325},{"day":27,"act":2,"pressure":0.42,"replyBudget":0.04,"recallWeight":3.1,"dayMessages":4,"nightMessages":3,"recallChance":0.34},{"day":28,"act":2,"pressure":0.44,"replyBudget":0.04,"recallWeight":3.45,"dayMessages":4,"nightMessages":3,"recallChance":0.355},{"day":29,"act":2,"pressure":0.46,"replyBudget":0.04,"recallWeight":3.8,"dayMessages":4,"nightMessages":3,"recallChance":0.37},{"day":30,"act":2,"pressure":0.48,"replyBudget":0.04,"recallWeight":4.15,"dayMessages":4,"nightMessages":3,"recallChance":0.385},{"day":31,"act":2,"pressure":0.5,"replyBudget":0.0,"recallWeight":4.5,"dayMessages":4,"nightMessages":3,"recallChance":0.4},{"day":32,"act":2,"pressure":0.52,"replyBudget":0.0,"recallWeight":4.85,"dayMessages":4,"nightMessages":3,"recallChance":0.415},{"day":33,"act":2,"pressure":0.54,"replyBudget":0.0,"recallWeight":5.2,"dayMessages":4,"nightMessages":3,"recallChance":0.43},{"day":34,"act":2,"pressure":0.56,"replyBudget":0.0,"recallWeight":5.55,"dayMessages":4,"nightMessages":3,"recallChance":0.445},{"day":35,"act":2,"pressure":0.58,"replyBudget":0.0,"recallWeight":5.9,"dayMessages":4,"nightMessages":3,"recallChance":0.46},{"day":36,"act":2,"pressure":0.6,"replyBudget":0.0,"recallWeight":6.25,"dayMessages":4,"nightMessages":3,"recallChance":0.475},{"day":37,"act":2,"pressure":0.62,"replyBudget":0.0,"recallWeight":6.6,"dayMessages":4,"nightMessages":3,"recallChance":0.49},{"day":38,"act":2,"pressure":0.64,"replyBudget":0.0,"recallWeight":6.95,"dayMessages":4,"nightMessages":3,"recallChance":0.505},{"day":39,"act":2,"pressure":0.66,"replyBudget":0.0,"recallWeight":7.3,"dayMessages":4,"nightMessages":3,"recallChance":0.52},{"day":40,"act":2,"pressure":0.68,"replyBudget":0.0,"recallWeight":7.65,"dayMessages":4,"nightMessages":3,"recallChance":0.535},{"day":41,"act":2,"pressure":0.7,"replyBudget":0.0,"recallWeight":8.15,"dayMessages":3,"nightMessages":3,"recallChance":0.55},{"day":42,"act":2,"pressure":0.715,"replyBudget":0.0,"recallWeight":8.65,"dayMessages":3,"nightMessages":3,"recallChance":0.565},{"day":43,"act":2,"pressure":0.73,"replyBudget":0.0,"recallWeight":9.15,"dayMessages":3,"nightMessages":3,"recallChance":0.58},{"day":44,"act":2,"pressure":0.745,"replyBudget":0.0,"recallWeight":9.65,"dayMessages":3,"nightMessages":3,"recallChance":0.595},{"day":45,"act":2,"pressure":0.76,"replyBudget":0.0,"recallWeight":10.15,"dayMessages":3,"nightMessages":3,"recallChance":0.61},{"day":46,"act":2,"pressure":0.775,"replyBudget":0.0,"recallWeight":10.65,"dayMessages":3,"nightMessages":3,"recallChance":0.625},{"day":47,"act":2,"pressure":0.79,"replyBudget":0.0,"recallWeight":11.15,"dayMessages":3,"nightMessages":3,"recallChance":0.64},{"day":48,"act":2,"pressure":0.805,"replyBudget":0.0,"recallWeight":11.65,"dayMessages":3,"nightMessages":3,"recallChance":0.655},{"day":49,"act":2,"pressure":0.82,"replyBudget":0.0,"recallWeight":12.15,"dayMessages":3,"nightMessages":3,"recallChance":0.67},{"day":50,"act":2,"pressure":0.835,"replyBudget":0.0,"recallWeight":12.65,"dayMessages":3,"nightMessages":3,"recallChance":0.685},{"day":51,"act":2,"pressure":0.85,"replyBudget":0.0,"recallWeight":13.15,"dayMessages":3,"nightMessages":3,"recallChance":0.7},{"day":52,"act":2,"pressure":0.865,"replyBudget":0.0,"recallWeight":13.65,"dayMessages":3,"nightMessages":3,"recallChance":0.715},{"day":53,"act":2,"pressure":0.88,"replyBudget":0.0,"recallWeight":14.15,"dayMessages":3,"nightMessages":3,"recallChance":0.73},{"day":54,"act":2,"pressure":0.895,"replyBudget":0.0,"recallWeight":14.65,"dayMessages":3,"nightMessages":3,"recallChance":0.745},{"day":55,"act":2,"pressure":0.91,"replyBudget":0.0,"recallWeight":15.15,"dayMessages":3,"nightMessages":3,"recallChance":0.76},{"day":56,"act":2,"pressure":0.925,"replyBudget":0.0,"recallWeight":15.65,"dayMessages":3,"nightMessages":3,"recallChance":0.775},{"day":57,"act":2,"pressure":0.94,"replyBudget":0.0,"recallWeight":16.15,"dayMessages":3,"nightMessages":3,"recallChance":0.79},{"day":58,"act":2,"pressure":0.955,"replyBudget":0.0,"recallWeight":16.65,"dayMessages":3,"nightMessages":3,"recallChance":0.805},{"day":59,"act":2,"pressure":0.97,"replyBudget":0.0,"recallWeight":17.15,"dayMessages":3,"nightMessages":3,"recallChance":0.82},{"day":60,"act":2,"pressure":0.985,"replyBudget":0.0,"recallWeight":17.65,"dayMessages":3,"nightMessages":3,"recallChance":0.835},{"day":61,"act":3,"pressure":1.0,"replyBudget":0.0,"recallWeight":18.0,"recallChance":0.85,"dayMessages":2,"nightMessages":3},{"day":62,"act":3,"pressure":1.0,"replyBudget":0.0,"recallWeight":18.0,"recallChance":0.852,"dayMessages":2,"nightMessages":3},{"day":63,"act":3,"pressure":1.0,"replyBudget":0.0,"recallWeight":18.0,"recallChance":0.855,"dayMessages":2,"nightMessages":3},{"day":64,"act":3,"pressure":1.0,"replyBudget":0.0,"recallWeight":18.0,"recallChance":0.857,"dayMessages":2,"nightMessages":3},{"day":65,"act":3,"pressure":1.0,"replyBudget":0.0,"recallWeight":18.0,"recallChance":0.86,"dayMessages":2,"nightMessages":3},{"day":66,"act":3,"pressure":1.0,"replyBudget":0.0,"recallWeight":18.0,"recallChance":0.862,"dayMessages":2,"nightMessages":3},{"day":67,"act":3,"pressure":1.0,"replyBudget":0.0,"recallWeight":18.0,"recallChance":0.865,"dayMessages":2,"nightMessages":3},{"day":68,"act":3,"pressure":1.0,"replyBudget":0.0,"recallWeight":18.0,"recallChance":0.867,"dayMessages":2,"nightMessages":3},{"day":69,"act":3,"pressure":1.0,"replyBudget":0.0,"recallWeight":18.0,"recallChance":0.87,"dayMessages":2,"nightMessages":3},{"day":70,"act":3,"pressure":1.0,"replyBudget":0.0,"recallWeight":18.0,"recallChance":0.872,"dayMessages":2,"nightMessages":3},{"day":71,"act":3,"pressure":1.0,"replyBudget":0.0,"recallWeight":18.0,"recallChance":0.875,"dayMessages":2,"nightMessages":3},{"day":72,"act":3,"pressure":1.0,"replyBudget":0.0,"recallWeight":18.0,"recallChance":0.877,"dayMessages":2,"nightMessages":3},{"day":73,"act":3,"pressure":1.0,"replyBudget":0.0,"recallWeight":18.0,"recallChance":0.88,"dayMessages":2,"nightMessages":3},{"day":74,"act":3,"pressure":1.0,"replyBudget":0.0,"recallWeight":18.0,"recallChance":0.882,"dayMessages":2,"nightMessages":3},{"day":75,"act":3,"pressure":1.0,"replyBudget":0.0,"recallWeight":18.0,"recallChance":0.885,"dayMessages":2,"nightMessages":3},{"day":76,"act":3,"pressure":1.0,"replyBudget":0.0,"recallWeight":18.0,"recallChance":0.887,"dayMessages":2,"nightMessages":3},{"day":77,"act":3,"pressure":1.0,"replyBudget":0.0,"recallWeight":18.0,"recallChance":0.89,"dayMessages":2,"nightMessages":3},{"day":78,"act":3,"pressure":1.0,"replyBudget":0.0,"recallWeight":18.0,"recallChance":0.892,"dayMessages":2,"nightMessages":3},{"day":79,"act":3,"pressure":1.0,"replyBudget":0.0,"recallWeight":18.0,"recallChance":0.895,"dayMessages":2,"nightMessages":3},{"day":80,"act":3,"pressure":1.0,"replyBudget":0.0,"recallWeight":18.0,"recallChance":0.897,"dayMessages":2,"nightMessages":3},{"day":81,"act":3,"pressure":1.0,"replyBudget":0.0,"recallWeight":18.0,"recallChance":0.9,"dayMessages":2,"nightMessages":3},{"day":82,"act":3,"pressure":1.0,"replyBudget":0.0,"recallWeight":18.0,"recallChance":0.902,"dayMessages":2,"nightMessages":3},{"day":83,"act":3,"pressure":1.0,"replyBudget":0.0,"recallWeight":18.0,"recallChance":0.905,"dayMessages":2,"nightMessages":3},{"day":84,"act":3,"pressure":1.0,"replyBudget":0.0,"recallWeight":18.0,"recallChance":0.907,"dayMessages":2,"nightMessages":3},{"day":85,"act":3,"pressure":1.0,"replyBudget":0.0,"recallWeight":18.0,"recallChance":0.91,"dayMessages":2,"nightMessages":3},{"day":86,"act":3,"pressure":1.0,"replyBudget":0.0,"recallWeight":18.0,"recallChance":0.912,"dayMessages":2,"nightMessages":3},{"day":87,"act":3,"pressure":1.0,"replyBudget":0.0,"recallWeight":18.0,"recallChance":0.915,"dayMessages":2,"nightMessages":3},{"day":88,"act":3,"pressure":1.0,"replyBudget":0.0,"recallWeight":18.0,"recallChance":0.917,"dayMessages":2,"nightMessages":3},{"day":89,"act":3,"pressure":1.0,"replyBudget":0.0,"recallWeight":18.0,"recallChance":0.92,"dayMessages":2,"nightMessages":3},{"day":90,"act":3,"pressure":1.0,"replyBudget":0.0,"recallWeight":18.0,"recallChance":0.922,"dayMessages":2,"nightMessages":3},{"day":91,"act":3,"pressure":1.0,"replyBudget":0.0,"recallWeight":18.0,"recallChance":0.925,"dayMessages":2,"nightMessages":3},{"day":92,"act":3,"pressure":1.0,"replyBudget":0.0,"recallWeight":18.0,"recallChance":0.927,"dayMessages":2,"nightMessages":3},{"day":93,"act":3,"pressure":1.0,"replyBudget":0.0,"recallWeight":18.0,"recallChance":0.93,"dayMessages":2,"nightMessages":3},{"day":94,"act":3,"pressure":1.0,"replyBudget":0.0,"recallWeight":18.0,"recallChance":0.932,"dayMessages":2,"nightMessages":3},{"day":95,"act":3,"pressure":1.0,"replyBudget":0.0,"recallWeight":18.0,"recallChance":0.935,"dayMessages":2,"nightMessages":3},{"day":96,"act":3,"pressure":1.0,"replyBudget":0.0,"recallWeight":18.0,"recallChance":0.938,"dayMessages":2,"nightMessages":3},{"day":97,"act":3,"pressure":1.0,"replyBudget":0.0,"recallWeight":18.0,"recallChance":0.94,"dayMessages":2,"nightMessages":3},{"day":98,"act":3,"pressure":1.0,"replyBudget":0.0,"recallWeight":18.0,"recallChance":0.943,"dayMessages":2,"nightMessages":3},{"day":99,"act":3,"pressure":1.0,"replyBudget":0.0,"recallWeight":18.0,"recallChance":0.945,"dayMessages":2,"nightMessages":3},{"day":100,"act":3,"pressure":1.0,"replyBudget":0.0,"recallWeight":18.0,"recallChance":0.948,"dayMessages":2,"nightMessages":3}]}};</script>
+<script>
+/* The director: turns (runSeed, day) into a transcript.
+ *
+ * Pure. No DOM, no Date, no Math.random -- everything derives from the seed, so the same
+ * run produces the same transcript and a bug is reproducible from its seed alone (D24).
+ * Loads as a CommonJS module in the tests and as a global in the built page.
+ *
+ * Act I's mechanic is decay (ladder.json): each day slightly fewer people reply. Nothing
+ * else changes for twenty days, and that restraint is the point.
+ */
+(function (root, factory) {
+  if (typeof module === 'object' && module.exports) module.exports = factory();
+  else root.Director = factory();
+})(typeof self !== 'undefined' ? self : this, function () {
+  'use strict';
+
+  /* ---- seeded randomness ------------------------------------------------- */
+
+  function xmur3(str) {
+    var h = 1779033703 ^ str.length;
+    for (var i = 0; i < str.length; i++) {
+      h = Math.imul(h ^ str.charCodeAt(i), 3432918353);
+      h = (h << 13) | (h >>> 19);
+    }
+    return function () {
+      h = Math.imul(h ^ (h >>> 16), 2246822507);
+      h = Math.imul(h ^ (h >>> 13), 3266489909);
+      h ^= h >>> 16;
+      return h >>> 0;
+    };
+  }
+
+  function mulberry32(a) {
+    return function () {
+      a |= 0;
+      a = (a + 0x6D2B79F5) | 0;
+      var t = Math.imul(a ^ (a >>> 15), 1 | a);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  function seededRandom(parts) {
+    return mulberry32(xmur3(parts.join('|'))());
+  }
+
+  function pickWeighted(rand, items, weightOf) {
+    var total = 0, i;
+    for (i = 0; i < items.length; i++) total += Math.max(0, weightOf(items[i]));
+    if (total <= 0) return null;
+    var roll = rand() * total;
+    for (i = 0; i < items.length; i++) {
+      roll -= Math.max(0, weightOf(items[i]));
+      if (roll <= 0) return items[i];
+    }
+    return items[items.length - 1];
+  }
+
+  /* ---- content access ---------------------------------------------------- */
+
+  function indexCast(cast) {
+    var byId = {};
+    (cast.cast || []).forEach(function (c) { byId[c.id] = c; });
+    return byId;
+  }
+
+  function ladderFor(ladder, day) {
+    var found = null;
+    (ladder.days || []).forEach(function (d) { if (d.day === day) found = d; });
+    return found;
+  }
+
+  function actFor(ladder, day) {
+    var entry = ladderFor(ladder, day);
+    return entry ? entry.act : null;
+  }
+
+  function fillSlots(text, chosen) {
+    return text.replace(/\{([A-Z0-9_]+)\}/g, function (whole, key) {
+      return Object.prototype.hasOwnProperty.call(chosen, key) ? chosen[key] : whole;
+    });
+  }
+
+  function chooseSlots(rand, template) {
+    var chosen = {};
+    Object.keys(template.slots || {}).sort().forEach(function (key) {
+      var options = template.slots[key];
+      chosen[key] = options[Math.floor(rand() * options.length) % options.length];
+    });
+    return chosen;
+  }
+
+  /* ---- eligibility ------------------------------------------------------- */
+
+  /* requiresMemory is one tag or several. Several means the template needs all of them,
+     which is what lets something point out that two of your answers cannot both be
+     true. */
+  var RECALL_COOLDOWN_DAYS = 14;
+
+  function memoryTags(template) {
+    var need = template.requiresMemory;
+    if (!need) return [];
+    return Object.prototype.toString.call(need) === '[object Array]' ? need : [need];
+  }
+
+  function eligible(template, context) {
+    var act = context.act;
+    if (template.acts && (act < template.acts[0] || act > template.acts[1])) return false;
+    /* a template may belong to part of an act rather than all of it */
+    if (template.days && (context.day < template.days[0] || context.day > template.days[1])) {
+      return false;
+    }
+    if (template.phases && template.phases.indexOf(context.phase) < 0) return false;
+    if (template.once && context.fired[template.id]) return false;
+    var need = template.requiresFlags || [];
+    for (var i = 0; i < need.length; i++) {
+      if (!context.flags[need[i]]) return false;
+    }
+    /* Act II: a template that quotes the player back can only fire if the player
+       actually said it. This is why Act I wrote memory from day one -- it cannot be
+       retrofitted onto history someone has already lived through. */
+    /* Act III: presence. A clue found in Act I is confirmed in Act III -- the light was
+       on a sensor, and something was standing under it. A clue never found is never
+       confirmed, and that silence is the cost of not having looked. */
+    if (template.requiresClue && !context.clues[template.requiresClue]) return false;
+
+    var tags = memoryTags(template);
+    for (var j = 0; j < tags.length; j++) {
+      if (!context.memory[tags[j]]) return false;
+      /* Quoted once, then left alone for a fortnight. Saying it back twice in a week is
+         nagging; coming back to it after two weeks is the thing having only that to say. */
+      /* Combining two memories is not quoting one freshly: it is pointing out that both
+         cannot be true. That works precisely because you already heard each of them, so
+         the cooldown does not apply. */
+      if (tags.length === 1) {
+        var when = context.spent[tags[j]];
+        if (when && (context.day - when) < RECALL_COOLDOWN_DAYS) return false;
+      }
+    }
+    if (template.requiresMemory && context.recallUsed) return false;
+    return true;
+  }
+
+  /* ---- planning ----------------------------------------------------------
+     The ladder's reply budget is the primary driver, not the message count. Decay is
+     "fewer people reply", so a phase keeps drawing templates until its budget is spent
+     or the pool runs dry; the message target is a floor, not a cap. That makes
+     replies-per-day an exact function of the ladder, which is what lets the gate assert
+     the curve numerically instead of eyeballing it.
+     -------------------------------------------------------------------------- */
+
+  function totalBudget(budget) {
+    var sum = 0;
+    Object.keys(budget).forEach(function (k) { sum += budget[k]; });
+    return sum;
+  }
+
+  function planPhase(content, options) {
+    var castById = indexCast(content.cast);
+    var rand = seededRandom([options.runSeed, options.day, options.phase]);
+    var events = [];
+    var used = {};
+    var replies = 0;
+    var dropped = 0;
+
+    /* Rolled before the draw so it is part of the seed, not a side effect of it. */
+    var recallAllowed = rand() < (options.recallChance === undefined ? 1 : options.recallChance);
+
+    var pool = (content.templates.templates || []).filter(function (t) {
+      return eligible(t, {
+        act: options.act, phase: options.phase,
+        fired: options.fired, flags: options.flags, day: options.day,
+        memory: options.memory || {}, spent: options.spent || {},
+        clues: options.clues || {}, recallUsed: false
+      });
+    });
+
+    /* The ladder decides how hard the draw leans toward being quoted back. */
+    function weightOf(t) {
+      var base = t.weight || 1;
+      return t.requiresMemory ? base * (options.recallWeight || 1) : base;
+    }
+
+    var guard = 0;
+    while (guard++ < 60) {
+      if (events.length >= options.target && totalBudget(options.budget) <= 0) break;
+
+      var available = pool.filter(function (t) { return !used[t.id]; });
+      if (!available.length) break;
+
+      /* Prefer templates whose speakers still have budget: a contact with nothing left
+         to say should not be the one picked to say it. */
+      var withBudget = available.filter(function (t) {
+        return t.lines.some(function (l) { return (options.budget[l.speaker] || 0) > 0; });
+      });
+      /* Once nobody has budget the withBudget list is empty, and a no-reply sender like
+         Notify would otherwise win the endgame by default. Prefer the cast who used to
+         answer: the point of day 20 is a person talking to nobody. */
+      /* Act I only. Its endgame wants a person talking to nobody, so it prefers the cast
+         who used to answer. Applied later it silently excludes the unknown number, which
+         is the one voice acts II and III are built on. */
+      var human = options.act === 1
+        ? available.filter(function (t) {
+            return t.lines.some(function (l) {
+              return castById[l.speaker] && (castById[l.speaker].baseReplies || 0) > 0;
+            });
+          })
+        : available;
+      var recall = recallAllowed
+        ? available.filter(function (t) { return t.requiresMemory || t.requiresClue; })
+        : [];
+      var candidates = withBudget.length
+        ? withBudget
+        : (recall.length || human.length ? recall.concat(human) : available);
+      var template = pickWeighted(rand, candidates, weightOf);
+      if (!template) break;
+
+      used[template.id] = true;
+      if (template.once) options.fired[template.id] = true;
+      if (template.requiresMemory) recallAllowed = false;   /* one per phase */
+      memoryTags(template).forEach(function (tag) { options.spent[tag] = options.day; });
+      (template.setsFlags || []).forEach(function (f) { options.flags[f] = true; });
+
+      var slots = chooseSlots(rand, template);
+      memoryTags(template).forEach(function (tag, index) {
+        slots[index === 0 ? 'MEMORY' : 'MEMORY' + (index + 1)] =
+          (options.memory || {})[tag] || '';
+      });
+      var openedBy = {};
+
+      template.lines.forEach(function (line) {
+        if (!castById[line.speaker]) return;
+
+        /* The first line a contact says in a template opens; everything after it is a
+           reply, and replies are what the ladder takes away. */
+        var isReply = !!openedBy[line.speaker];
+        /* A recall is not conversation, so it does not pay conversation's price. Decay
+           is the cast losing the will to answer each other; the thing quoting you back
+           has no such problem, and cutting it off mid-sentence loses the whole point of
+           "ren stopped answering on the tuesday / you started on the sunday". */
+        if (isReply && !template.requiresMemory && options.act === 1) {
+          if ((options.budget[line.speaker] || 0) <= 0) { dropped++; return; }
+          options.budget[line.speaker] -= 1;
+          replies += 1;
+        }
+        openedBy[line.speaker] = true;
+
+        events.push({
+          templateId: template.id,
+          threadId: template.threadId,
+          speaker: line.speaker,
+          from: 'them',
+          kind: line.kind || 'text',
+          game: line.game || null,
+          asset: line.asset || null,
+          durationMs: line.durationMs || null,
+          body: fillSlots(line.text, slots),
+          emphasis: line.emphasis || null,
+          isReply: isReply
+        });
+      });
+
+      (template.choices || []).forEach(function (choice) {
+        events.push({
+          templateId: template.id,
+          threadId: template.threadId,
+          kind: 'choice',
+          choiceId: choice.id,
+          label: choice.label,
+          tells: choice.tells ? fillSlots(choice.tells, slots) : null,
+          revealsClue: choice.revealsClue || null,
+          memory: choice.memory
+            ? { tag: choice.memory.tag, fragment: fillSlots(choice.memory.fragment, slots) }
+            : null
+        });
+      });
+    }
+
+    /* D26: the player can always reply. Decay is something that happens to other
+       people, and a phase with nothing to say is a phase where this stopped being a
+       messaging app. If the draw produced no choices, draw one that has them -- ignoring
+       budget, because the budget governs the cast, never the player. */
+    if (!events.some(function (e) { return e.kind === 'choice'; })) {
+      var withChoices = pool.filter(function (t) {
+        return !used[t.id] && (t.choices || []).length;
+      });
+      var rescue = pickWeighted(rand, withChoices, weightOf);
+      if (rescue) {
+        used[rescue.id] = true;
+        if (rescue.once) options.fired[rescue.id] = true;
+        (rescue.setsFlags || []).forEach(function (f) { options.flags[f] = true; });
+        var rescueSlots = chooseSlots(rand, rescue);
+        memoryTags(rescue).forEach(function (tag, index) {
+          rescueSlots[index === 0 ? 'MEMORY' : 'MEMORY' + (index + 1)] =
+            (options.memory || {})[tag] || '';
+        });
+        var rescueOpened = {};
+        rescue.lines.forEach(function (line) {
+          if (!castById[line.speaker]) return;
+          if (rescueOpened[line.speaker]) return;   /* the opener only: no budget spent */
+          rescueOpened[line.speaker] = true;
+          events.push({
+            templateId: rescue.id,
+            threadId: rescue.threadId,
+            speaker: line.speaker,
+            from: 'them',
+            kind: 'text',
+            body: fillSlots(line.text, rescueSlots),
+            isReply: false
+          });
+        });
+        (rescue.choices || []).forEach(function (choice) {
+          events.push({
+            templateId: rescue.id,
+            threadId: rescue.threadId,
+            kind: 'choice',
+            choiceId: choice.id,
+            label: choice.label,
+            tells: choice.tells ? fillSlots(choice.tells, rescueSlots) : null,
+            revealsClue: choice.revealsClue || null,
+            memory: choice.memory
+              ? { tag: choice.memory.tag,
+                  fragment: fillSlots(choice.memory.fragment, rescueSlots) }
+              : null
+          });
+        });
+      }
+    }
+
+    return { events: events, replies: replies, dropped: dropped };
+  }
+
+  /* Day 1 is authored: its morning is beat 1's history and its night is the live beats
+     that already exist in story.json. It enters the system as the first entry, not as an
+     exception to it. */
+  function authoredDay(content, day, entry) {
+    var story = content.story || { beats: [] };
+    var live = [], history = [];
+    (story.beats || []).forEach(function (beat) {
+      var isLive = beat.messages.some(function (m) { return m.live === true; });
+      (isLive ? live : history).push(beat);
+    });
+
+    function eventsFrom(beats) {
+      var out = [];
+      beats.slice().sort(function (a, b) { return a.id < b.id ? -1 : 1; }).forEach(function (beat) {
+        var opened = {};
+        beat.messages.forEach(function (m) {
+          if (m.from !== 'them') return;
+          var who = m.fromContactId || beat.threadId;
+          var isReply = !!opened[who];
+          opened[who] = true;
+          out.push({
+            templateId: 'authored',
+            threadId: beat.threadId,
+            speaker: m.fromContactId || null,
+            from: 'them',
+            kind: m.kind,
+            body: m.body || '',
+            isReply: isReply
+          });
+        });
+      });
+      return out;
+    }
+
+    var dayEvents = eventsFrom(history);
+    var nightEvents = eventsFrom(live);
+    var replies = function (list) {
+      return list.filter(function (e) { return e.isReply; }).length;
+    };
+    return {
+      day: day,
+      act: entry.act,
+      authored: true,
+      phases: { day: dayEvents, night: nightEvents },
+      replies: replies(dayEvents) + replies(nightEvents),
+      dropped: 0,
+      messages: dayEvents.length + nightEvents.length,
+      budgetAtStart: {},
+      budgetLeft: {}
+    };
+  }
+
+  function planDay(content, runSeed, day, carried) {
+    var entry = ladderFor(content.ladder, day);
+    if (!entry) return null;
+    if (entry.authored) return authoredDay(content, day, entry);
+
+    var castById = indexCast(content.cast);
+    var state = carried || { flags: {}, fired: {}, memory: {}, spent: {}, clues: {} };
+    state.memory = state.memory || {};
+    state.spent = state.spent || {};
+    state.clues = state.clues || {};
+
+    /* Split the day's budget between the phases so night is never left mute by a
+       talkative morning. */
+    var dayBudget = {}, nightBudget = {};
+    Object.keys(castById).forEach(function (id) {
+      var whole = Math.max(0, Math.round((castById[id].baseReplies || 0) * entry.replyBudget));
+      dayBudget[id] = Math.ceil(whole * 0.6);
+      nightBudget[id] = whole - dayBudget[id];
+    });
+
+    var out = {
+      day: day,
+      act: entry.act,
+      authored: false,
+      budgetAtStart: {
+        day: JSON.parse(JSON.stringify(dayBudget)),
+        night: JSON.parse(JSON.stringify(nightBudget))
+      },
+      phases: {},
+      replies: 0,
+      dropped: 0,
+      messages: 0
+    };
+
+    [['day', dayBudget], ['night', nightBudget]].forEach(function (pair) {
+      var result = planPhase(content, {
+        runSeed: runSeed,
+        day: day,
+        phase: pair[0],
+        act: entry.act,
+        target: pair[0] === 'day' ? entry.dayMessages : entry.nightMessages,
+        budget: pair[1],
+        flags: state.flags,
+        fired: state.fired,
+        memory: state.memory,
+        spent: state.spent,
+        clues: state.clues,
+        recallWeight: entry.recallWeight || 1,
+        recallChance: entry.recallChance === undefined ? 1 : entry.recallChance
+      });
+      out.phases[pair[0]] = result.events;
+      out.replies += result.replies;
+      out.dropped += result.dropped;
+      out.messages += result.events.filter(function (e) { return e.kind !== 'choice'; }).length;
+    });
+
+    out.budgetLeft = { day: dayBudget, night: nightBudget };
+    return out;
+  }
+
+  /* Determinism is now conditional: same seed AND same memory produces the same
+     transcript. Act II reads what the player said, so the seed alone cannot describe a
+     run any more. Tests pass a fixed memory to keep the property testable. */
+  function planRun(content, runSeed, fromDay, toDay, memory) {
+    /* copy: a run accumulates memory forward, and mutating the caller's object would
+       make the second identical call start from the first one's leftovers. */
+    var seeded = {};
+    Object.keys(memory || {}).forEach(function (k) { seeded[k] = memory[k]; });
+    var state = { flags: {}, fired: {}, memory: seeded, spent: {}, clues: {} };
+    var days = [];
+    for (var day = fromDay; day <= toDay; day++) {
+      var planned = planDay(content, runSeed, day, state);
+      if (planned) {
+        days.push(planned);
+        /* a run remembers forward: what was said on day 3 is still quotable on day 30 */
+        ['day', 'night'].forEach(function (phase) {
+          (planned.phases[phase] || []).forEach(function (e) {
+            if (e.kind !== 'choice') return;
+            if (e.memory && !state.memory[e.memory.tag]) {
+              state.memory[e.memory.tag] = e.memory.fragment;
+            }
+            if (e.revealsClue) state.clues[e.revealsClue] = true;
+          });
+        });
+      }
+    }
+    return days;
+  }
+
+  return {
+    xmur3: xmur3,
+    mulberry32: mulberry32,
+    seededRandom: seededRandom,
+    fillSlots: fillSlots,
+    ladderFor: ladderFor,
+    actFor: actFor,
+    planPhase: planPhase,
+    planDay: planDay,
+    planRun: planRun
+  };
+});
+
+</script>
+
+<script>
+(function(){
+"use strict";
+
+/* ============================================================================
+   D19 — SINGLE INGRESS
+   Exactly one function puts story text on screen. It accepts only tokens minted
+   by the Story or Director modules, and it stamps what it touched. Anything that
+   reaches a bubble by another route has no stamp, and auditIngress() finds it.
+   ========================================================================== */
+var Text = (function(){
+  var MINT = {};                       /* private brand; unreachable from outside */
+  function mint(origin, value){
+    return { __brand: MINT, origin: origin, value: value == null ? "" : String(value) };
+  }
+  function isToken(t){ return !!t && t.__brand === MINT; }
+  function paint(el, token){
+    if(!isToken(token)){
+      /* not-story: developer-facing */
+      throw new Error("story text must be a minted token (D19)");
+    }
+    el.textContent = token.value;
+    el.setAttribute("data-src", token.origin);
+    return el;
+  }
+  return { mint: mint, isToken: isToken, paint: paint };
+})();
+
+/* ============================================================================
+   STORY LAYER — knows the schema, touches no DOM (D18)
+   ========================================================================== */
+var Story = (function(data){
+  var beatsById = {}, contactsById = {}, threadsById = {};
+  (data.beats || []).forEach(function(b){ beatsById[b.id] = b; });
+  (data.contacts || []).forEach(function(c){ contactsById[c.id] = c; });
+  (data.threads || []).forEach(function(t){ threadsById[t.id] = t; });
+
+  return {
+    raw: data,
+    threads: function(){ return data.threads || []; },
+    thread: function(id){ return threadsById[id]; },
+    beat: function(id){ return beatsById[id]; },
+    contact: function(id){ return contactsById[id]; },
+    contactName: function(id){
+      var c = contactsById[id];
+      return c ? Text.mint("story.contact", c.displayName) : null;
+    },
+    threadName: function(t){ return Text.mint("story.thread", t.displayName); },
+    bodyOf: function(m){ return Text.mint("story.message", m.body || ""); },
+    labelOf: function(c){ return Text.mint("story.choice", c.label); },
+    endingTitle: function(e){ return Text.mint("story.ending", e.title); },
+    endingBody: function(e){ return Text.mint("story.ending", e.body); },
+    endingFor: function(flags){
+      var list = data.endings || [], found = null;
+      list.forEach(function(e){
+        if(found) return;
+        var need = e.requiresFlags || [];
+        if(!need.length) return;
+        for(var i=0;i<need.length;i++){ if(!flags[need[i]]) return; }
+        found = e;
+      });
+      return found;
+    },
+    messagesOf: function(beatId, flags){
+      var b = beatsById[beatId];
+      if(!b) return [];
+      return (b.messages || []).filter(function(m){
+        var need = m.requiresFlags || [];
+        for(var i=0;i<need.length;i++){ if(!flags[need[i]]) return false; }
+        return true;
+      });
+    },
+    choicesOf: function(beatId){
+      var b = beatsById[beatId];
+      return (b && b.choices) || [];
+    },
+    nextOf: function(beatId){
+      var b = beatsById[beatId];
+      return b && b.next;
+    },
+    speakerOf: function(m){
+      return m.fromContactId ? this.contactName(m.fromContactId) : null;
+    }
+  };
+})(window.STORY);
+
+/* Director output is story-derived too, so it mints through the same door. */
+var Generated = {
+  body: function(event){ return Text.mint("director.message", event.body); },
+  label: function(event){ return Text.mint("director.choice", event.label); },
+  speaker: function(event){
+    var cast = (window.CONTENT && window.CONTENT.cast && window.CONTENT.cast.cast) || [];
+    var found = null;
+    cast.forEach(function(c){ if(c.id === event.speaker) found = c; });
+    return found ? Text.mint("director.contact", found.displayName) : null;
+  }
+};
+
+/* ============================================================================
+   CLOCK
+   ========================================================================== */
+var LAUNCH = new Date();
+var WEEKDAY = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+var WEEKDAY_SHORT = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+
+function at(offsetMin){ return new Date(LAUNCH.getTime() + offsetMin*60000); }
+function dayKey(d){ return d.getFullYear()+"/"+(d.getMonth()+1)+"/"+d.getDate(); }
+function hhmm(d){ var h=d.getHours(), m=d.getMinutes(); return h+":"+(m<10?"0"+m:m); }
+function daysBack(d){
+  return Math.round((new Date(dayKey(LAUNCH)) - new Date(dayKey(d)))/86400000);
+}
+function dayLabel(d){
+  var n = daysBack(d);
+  if(n===0) return "Today";
+  if(n===1) return "Yesterday";
+  if(n<7) return WEEKDAY[d.getDay()];
+  return d.getDate()+"/"+(d.getMonth()+1);
+}
+function listStamp(offsetMin){
+  var d = at(offsetMin), n = daysBack(d);
+  if(n===0) return hhmm(d);
+  if(n===1) return "Yesterday";
+  if(n<7) return WEEKDAY_SHORT[d.getDay()];
+  return d.getDate()+"/"+(d.getMonth()+1);
+}
+function stampLabel(offsetMin){
+  return offsetMin === 0 ? "now" : hhmm(at(offsetMin));
+}
+
+/* ============================================================================
+   D24 — PERSISTENCE AND ELAPSED TIME
+   ========================================================================== */
+var STORAGE_KEY = "unread.save.v1";
+var MINUTE = 60000, HOUR = 60*MINUTE;
+var BANDS = {
+  RESUME:   2*MINUTE,      /* < 2m  : nothing changed          */
+  ADVANCED: HOUR,          /* < 1h  : messages already waiting */
+  MISSED:   12*HOUR        /* < 12h : phase closed, no replies */
+};
+
+/* Local calendar day, not UTC: the streak has to agree with the player's own night. */
+function dayStamp(now){
+  var d = new Date(now);
+  return d.getFullYear() + "-" + (d.getMonth() + 1) + "-" + d.getDate();
+}
+function daysBetweenStamps(a, b){
+  function toUTC(stamp){
+    var p = String(stamp).split("-");
+    return Date.UTC(+p[0], +p[1] - 1, +p[2]);
+  }
+  return Math.round((toUTC(b) - toUTC(a)) / 86400000);
+}
+
+/* Consecutive real-world days with the app opened. Pure so the gate can walk a year of
+   it without a clock: hand it a save and a stamp, get the save's new streak back. */
+function rollStreak(save, stamp){
+  var last = save.streakStamp;
+  if(!last){ save.streak = 1; }
+  else {
+    var gap = daysBetweenStamps(last, stamp);
+    if(gap === 0) return save.streak || 1;
+    save.streak = gap === 1 ? (save.streak || 0) + 1 : 1;
+  }
+  save.streakBest = Math.max(save.streakBest || 0, save.streak);
+  save.streakStamp = stamp;
+  return save.streak;
+}
+
+function randomSeed(){
+  try {
+    var buf = new Uint32Array(2);
+    (window.crypto || window.msCrypto).getRandomValues(buf);
+    return buf[0].toString(36) + buf[1].toString(36);
+  } catch(e){
+    return String(new Date().getTime());
+  }
+}
+
+var Save = {
+  read: function(){
+    try { return JSON.parse(window.localStorage.getItem(STORAGE_KEY) || "null"); }
+    catch(e){ return null; }
+  },
+  write: function(state){
+    if(Save.wiped) return;
+    try { window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+    catch(e){ /* private mode: the run simply does not persist */ }
+  },
+  wiped: false,
+  clear: function(){
+    /* Latch it. Otherwise touch() on beforeunload writes the in-memory save straight
+       back over the top and the reset does nothing at all. */
+    Save.wiped = true;
+    try { window.localStorage.removeItem(STORAGE_KEY); } catch(e){}
+  },
+  fresh: function(now){
+    return {
+      runSeed: randomSeed(),
+      day: 1,
+      phase: "day",
+      phaseStartedAt: now,
+      lastSeenAt: now,
+      flags: {},
+      contactState: {},
+      cluesFound: {},
+      seen: {},
+      streak: 0,
+      streakBest: 0,
+      streakStamp: null,
+      opens: 0
+    };
+  }
+};
+
+/* The whole of D24 in one pure function, so the gate can assert it without a browser
+   clock: given a save and a wall-clock now, what changed while you were gone? */
+function applyAway(save, now){
+  var awayMs = Math.max(0, now - (save.lastSeenAt || now));
+  var result = { awayMs: awayMs, band: "resume", daysAdvanced: 0,
+                 waiting: 0, repliesLocked: false };
+
+  if(awayMs < BANDS.RESUME){
+    result.band = "resume";
+  } else if(awayMs < BANDS.ADVANCED){
+    result.band = "advanced";
+    /* 1-3 messages arrived while you were gone, scaled by how long that was */
+    result.waiting = Math.min(3, 1 + Math.floor(awayMs / (20*MINUTE)));
+  } else if(awayMs < BANDS.MISSED){
+    result.band = "missed";
+    result.repliesLocked = true;
+  } else {
+    result.band = "dayAdvanced";
+    result.daysAdvanced = Math.min(3, Math.floor(awayMs / (12*HOUR)));
+    result.repliesLocked = true;
+  }
+  return result;
+}
+
+/* ============================================================================
+   RUNTIME STATE
+   ========================================================================== */
+var PHOTO_REVEAL_MS = 600;
+var INTER_BEAT_MS   = 6000;
+var PHOTO_ARRIVE_MS = 5000;
+var THREADS_TO_READ = 3;
+var UNKNOWN = "t_unknown";
+var APP_NAME = "Loop";   /* the fictional messenger. Guideline 4.1: not anyone else's. */
+
+var params = new URLSearchParams(window.location.search);
+var FAST = params.has("fast");
+var CONTENT = window.CONTENT || {};
+var LADDER = CONTENT.ladder || { days: [], phaseWindowMs: 600000, fastWindowMs: 30000 };
+var PHASE_WINDOW_MS = FAST ? (LADDER.fastWindowMs || 30000) : (LADDER.phaseWindowMs || 600000);
+
+var S = {
+  beat: 1,
+  opened: {},
+  flags: {},
+  hidden: {},
+  current: null,
+  ended: false,
+  leftDuringLive: false,
+  shown: {},
+  save: null,
+  away: null,
+  repliesLocked: false,
+  pendingChoices: []
+};
+
+var scroll  = document.getElementById("scroll"),
+    appbar  = document.getElementById("appbar"),
+    choicesEl = document.getElementById("choices"),
+    endEl   = document.getElementById("end");
+
+document.getElementById("clock").textContent = hhmm(LAUNCH);
+
+function resetThreads(){
+  S.shown = {};
+  Story.threads().forEach(function(t){
+    S.shown[t.id] = Story.messagesOf(t.startBeat, S.flags).slice();
+  });
+}
+resetThreads();
+
+function shownOf(t){ return S.shown[t.id] || []; }
+function lastOffset(t){
+  var m = shownOf(t);
+  return m.length ? m[m.length-1].offsetMinutes : -999999;
+}
+function isUnread(t){ return (t.startsUnread || t.forcedUnread) && !S.opened[t.id]; }
+
+/* How many, not whether. A phone that says "some" is a phone nobody built. */
+function seenBank(){
+  if(!S.save) return {};
+  return S.save.seen || (S.save.seen = {});
+}
+/* A thread you have never opened is not 31 unread. You put the phone down after the
+   last thing you sent, so that is where the count starts. */
+function defaultSeen(msgs){
+  for(var i = msgs.length - 1; i >= 0; i--){ if(msgs[i].from === "me") return i + 1; }
+  return 0;
+}
+function unreadCount(t){
+  var msgs = shownOf(t), stored = seenBank()[t.id];
+  var seen = stored === undefined ? defaultSeen(msgs) : stored, n = 0;
+  for(var i = seen; i < msgs.length; i++){ if(msgs[i].from !== "me") n++; }
+  return n;
+}
+function markSeen(t){
+  seenBank()[t.id] = shownOf(t).length;
+  if(S.save) Save.write(S.save);
+}
+function sortedThreads(){
+  return Story.threads()
+    .filter(function(t){ return !S.hidden[t.id]; })
+    .slice()
+    .sort(function(a,b){ return lastOffset(b)-lastOffset(a); });
+}
+
+/* ============================================================================
+   THE HALLWAY, DRAWN NOT FETCHED
+   ========================================================================== */
+function hallway(scale, detail, variant){
+  scale = scale || 1;
+  var W=260*scale,H=190*scale,c=document.createElement("canvas");
+  c.width=W; c.height=H;
+  var g=c.getContext("2d");
+  g.fillStyle="#0a0a0b"; g.fillRect(0,0,W,H);
+  var vx=W*0.54, vy=H*0.48;
+  var s2=scale;
+  g.fillStyle="#111214";
+  g.beginPath(); g.moveTo(0,0); g.lineTo(vx-46*s2,vy-30*s2); g.lineTo(vx-46*s2,vy+34*s2); g.lineTo(0,H); g.fill();
+  g.fillStyle="#0e0f11";
+  g.beginPath(); g.moveTo(W,0); g.lineTo(vx+52*s2,vy-30*s2); g.lineTo(vx+52*s2,vy+34*s2); g.lineTo(W,H); g.fill();
+  g.fillStyle="#141517";
+  g.beginPath(); g.moveTo(0,H); g.lineTo(vx-46*s2,vy+34*s2); g.lineTo(vx+52*s2,vy+34*s2); g.lineTo(W,H); g.fill();
+  var grd=g.createLinearGradient(vx-46*s2,vy-30*s2,vx+52*s2,vy+34*s2);
+  grd.addColorStop(0,"#2b2721"); grd.addColorStop(.55,"#4a4034"); grd.addColorStop(1,"#211e1a");
+  g.fillStyle=grd; g.fillRect(vx-46*s2,vy-30*s2,98*s2,64*s2);
+  var sp=g.createLinearGradient(vx,vy+34*s2,vx,H);
+  sp.addColorStop(0,"rgba(120,102,74,0.22)"); sp.addColorStop(1,"rgba(120,102,74,0)");
+  g.fillStyle=sp;
+  g.beginPath(); g.moveTo(vx-46*s2,vy+34*s2); g.lineTo(vx+52*s2,vy+34*s2); g.lineTo(W*0.86,H); g.lineTo(W*0.16,H); g.fill();
+  if(detail){
+    /* Barely there on purpose: a standing shape against the spill, a couple of
+       percent of contrast. If it is obvious it is a jump scare, and if it is
+       invisible it is not a reward. */
+    var fx=vx+7*s2, fy=vy+34*s2, fw=12*s2, fh=46*s2;
+    var body=g.createLinearGradient(fx,fy-fh,fx,fy);
+    body.addColorStop(0,"rgba(13,12,11,0.38)");
+    body.addColorStop(1,"rgba(17,15,13,0.16)");
+    g.fillStyle=body;
+    g.beginPath();
+    g.ellipse(fx,fy-fh+7*s2,fw*0.34,fw*0.40,0,0,Math.PI*2); g.fill();
+    g.fillRect(fx-fw*0.5,fy-fh+12*s2,fw,fh-12*s2);
+  }
+
+  if(variant === 1){
+    /* the difference: something left on the floor, in the spill, near the left wall */
+    g.fillStyle="rgba(9,8,8,0.72)";
+    g.beginPath();
+    g.ellipse(W*0.34,H*0.86,10*s2,4.5*s2,-0.18,0,Math.PI*2); g.fill();
+    g.fillStyle="rgba(14,12,11,0.55)";
+    g.fillRect(W*0.34-8*s2,H*0.86-6*s2,15*s2,6*s2);
+  }
+
+  var vg=g.createRadialGradient(W/2,H/2,H*0.22,W/2,H/2,H*0.95);
+  vg.addColorStop(0,"rgba(0,0,0,0)"); vg.addColorStop(1,"rgba(0,0,0,0.82)");
+  g.fillStyle=vg; g.fillRect(0,0,W,H);
+  var img=g.getImageData(0,0,W,H), d=img.data;
+  for(var i=0;i<d.length;i+=4){
+    var n=(Math.random()-0.5)*34;
+    d[i]  =Math.max(0,Math.min(255,d[i]+n));
+    d[i+1]=Math.max(0,Math.min(255,d[i+1]+n));
+    d[i+2]=Math.max(0,Math.min(255,d[i+2]+n*0.9));
+  }
+  g.putImageData(img,0,0);
+  return c;
+}
+
+/* ============================================================================
+   RENDER LAYER
+   ========================================================================== */
+function previewToken(t){
+  if(isLocked(t)) return Text.mint("ui.chrome", "····");
+  var m = shownOf(t);
+  if(!m.length) return Text.mint("story.preview", "");
+  var last = m[m.length-1];
+  if(last.kind === "photo") return Text.mint("ui.chrome", "Photo");
+  /* Only a group chat names its speaker. In a one-to-one thread the name is already
+     the thread title, and "Mom: ren" reads like a bug. */
+  var group = (t.participantIds || []).length > 1;
+  var who = (group && last.fromContactId) ? Story.contact(last.fromContactId) : null;
+  var prefix = who ? who.displayName + ": " : "";
+  return Text.mint("story.preview", prefix + (last.body || ""));
+}
+
+/* force is for the three places that mean it: the back button, closing search, and
+   boot. Everything else is a timer, and a timer does not get to close what you opened. */
+function renderList(force){
+  if(S.current && !force) return;
+  S.current=null; choicesEl.innerHTML="";
+  appbar.innerHTML='<span class="title"></span>'
+    + '<button class="find" id="find" aria-label="Search">' + FIND_GLYPH + '</button>'
+    + '<button class="cog" id="cog" aria-label="Settings">⚙</button>';
+  Text.paint(appbar.querySelector(".title"), Text.mint("ui.chrome", APP_NAME));
+  appbar.querySelector("#find").addEventListener("click", openSearch);
+  appbar.querySelector("#cog").addEventListener("click", openSettings);
+  scroll.innerHTML="";
+  sortedThreads().forEach(function(t){
+    var b=document.createElement("button");
+    b.className="row";
+    b.setAttribute("data-thread", t.id);
+    b.innerHTML='<span class="avatar"></span><span class="rb"><span class="rt">'+
+      '<span class="rn"></span><span class="rtime"></span></span><span class="rp"></span></span>';
+    var av=b.querySelector(".avatar");
+    av.style.background = t.accentHex || "#6E7480";
+    av.textContent = (t.displayName || "").charAt(0).toUpperCase();
+    Text.paint(b.querySelector(".rn"), Story.threadName(t));
+    b.querySelector(".rtime").textContent = listStamp(lastOffset(t));
+    Text.paint(b.querySelector(".rp"), previewToken(t));
+    if(isLocked(t)){
+      var l=document.createElement("span"); l.className="lock";
+      l.textContent="🔒";        /* not-story: a glyph */
+      b.appendChild(l);
+    }
+    if(isUnread(t)){
+      var d=document.createElement("span"); d.className="dot";
+      var n = unreadCount(t);
+      d.textContent = String(n > 99 ? 99 : (n || 1));   /* not-story: a count */
+      b.appendChild(d);
+      b.classList.add("new");
+      if(prefs.alerts) b.classList.add("pulse");
+    }
+    b.addEventListener("click", function(){ openThread(t); });
+    scroll.appendChild(b);
+  });
+  scroll.scrollTop=0;
+  drawStatusBar();
+  maybeAdvance();
+}
+
+function bubbleFor(m, prev){
+  if(m.kind === "game"){
+    if(m.game === "spot")   return spotWidget(m);
+    if(m.game === "recall") return recallWidget(m);
+    if(m.game === "match")  return matchWidget(m);
+    return gameWidget(m);
+  }
+  if(m.kind === "audio"){ return memoWidget(m); }
+  if(m.kind === "photo"){
+    var p=document.createElement("div"); p.className="photo";
+    p.setAttribute("data-src","story.photo");
+    p.setAttribute("tabindex","0");
+    p.appendChild(hallway(1, 0));
+    p.addEventListener("click", function(){ viewer.open(); });
+    p.addEventListener("keydown", function(e){
+      if(e.key === "Enter" || e.key === " "){ e.preventDefault(); viewer.open(); }
+    });
+    return p;
+  }
+  var prevWho = prev && prev.fromContactId, thisWho = m.fromContactId;
+  var same = prev && prev.from === m.from && prevWho === thisWho;
+  var el=document.createElement("div");
+  el.className = "msg " + (m.from === "me" ? "me" : "them") + (same ? " run" : "");
+  var thread = m.__threadId ? Story.thread(m.__threadId) : S.current;
+  var isGroup = !!(thread && (thread.participantIds || []).length > 1);
+  var whoToken = (isGroup && m.fromContactId) ? Story.contactName(m.fromContactId) : null;
+  if(whoToken && !same){
+    var w=document.createElement("span"); w.className="who";
+    Text.paint(w, whoToken);
+    el.appendChild(w);
+  }
+  var body=document.createElement("span");
+  body.className="body";
+  Text.paint(body, m.__token || Story.bodyOf(m));
+  el.appendChild(body);
+  el.setAttribute("data-src", body.getAttribute("data-src"));
+  paintReaction(el, m);
+  wireReactable(el, m);
+  return el;
+}
+
+function appendStamp(wrap, m){
+  if(!m.showTimestamp) return;
+  var s=document.createElement("div"); s.className="stamp";
+  s.textContent = stampLabel(m.offsetMinutes);
+  wrap.appendChild(s);
+}
+
+function paint(t){
+  if(S.current && S.current.id === t.id) markSeen(t);
+  var wrap=document.createElement("div"); wrap.className="convo";
+  var lastDay=null, prev=null;
+  shownOf(t).forEach(function(m){
+    var d=at(m.offsetMinutes);
+    /* D5: a divider needs a calendar-day change AND a gap of at least 30 minutes. */
+    var gapOK = !prev || (m.offsetMinutes - prev.offsetMinutes) >= 30;
+    if(dayKey(d)!==lastDay && (lastDay===null || gapOK)){
+      var div=document.createElement("div"); div.className="divider";
+      div.textContent=dayLabel(d); wrap.appendChild(div);
+      lastDay=dayKey(d); prev=null;
+    }
+    var bubble = bubbleFor(m, prev);
+    var when = document.createElement("span");
+    when.className = "when";
+    when.textContent = hhmm(at(m.offsetMinutes));    /* not-story: a clock time */
+    when.setAttribute("aria-hidden", "true");
+    bubble.appendChild(when);
+    wrap.appendChild(bubble);
+    appendStamp(wrap, m);
+    prev=m;
+  });
+  scroll.innerHTML=""; scroll.appendChild(wrap);
+  wireSwipe(wrap);
+  return wrap;
+}
+
+function openThread(t){
+  S.current=t; S.opened[t.id]=true; t.forcedUnread=false;
+  markSeen(t);
+  choicesEl.innerHTML="";
+  appbar.innerHTML='<button class="back" aria-label="Back">‹</button><span class="title"></span>';
+  Text.paint(appbar.querySelector(".title"), Story.threadName(t));
+  appbar.querySelector(".back").addEventListener("click", function(){
+    if(!S.ended) renderList(true);
+  });
+  if(isLocked(t)) paintLocked(t); else paint(t);
+  scroll.scrollTop=0;
+  var mine = choicesForThread(t.id);
+  if(mine.length && !S.repliesLocked) renderChoices(mine);
+  if(t.id === UNKNOWN){
+    if((S.save.day || 1) >= FINAL_DAY) revealFinalEnding();
+    runQueue();
+  }
+  else maybeAdvance();
+}
+
+/* ============================================================================
+   LIVE DELIVERY
+   ========================================================================== */
+function deliver(threadId, list, done){
+  var t = Story.thread(threadId);
+  var wrap = scroll.querySelector(".convo");
+  if(!wrap){ if(done) done(); return; }
+  var i=0;
+  (function step(){
+    if(i>=list.length){ if(done) done(); return; }
+    var m=list[i++];
+    setTimeout(function(){
+      var showTyping = m.kind !== "photo" && m.from !== "me";
+      var ty=null;
+      if(showTyping){
+        ty=document.createElement("div"); ty.className="typing";
+        ty.innerHTML="<i></i><i></i><i></i>";
+        wrap.appendChild(ty); scroll.scrollTop=scroll.scrollHeight;
+      }
+      setTimeout(function(){
+        if(ty) ty.remove();
+        var prev = shownOf(t)[shownOf(t).length-1];
+        S.shown[t.id].push(m);
+        var el=bubbleFor(m, prev); el.classList.add("live");
+        announce(m);
+        wrap.appendChild(el);
+        appendStamp(wrap, m);
+        scroll.scrollTop=scroll.scrollHeight;
+        step();
+      }, showTyping ? (m.typingMs || 0) : PHOTO_REVEAL_MS);
+    }, m.delayMs || 0);
+  })();
+}
+
+/* ============================================================================
+   BEATS (day 1 night)
+   ========================================================================== */
+function maybeAdvance(){
+  var read=Object.keys(S.opened).length;
+  if(S.beat===1 && read>=THREADS_TO_READ && !S.current){
+    S.beat=2;
+    setTimeout(function(){
+      var t=Story.thread(UNKNOWN);
+      var photo=Story.messagesOf("b_unknown_2", S.flags);
+      S.shown[UNKNOWN]=S.shown[UNKNOWN].concat(photo);
+      t.forcedUnread=true; S.opened[UNKNOWN]=false;
+      if(!S.current) renderList();
+    }, PHOTO_ARRIVE_MS);
+  }
+}
+
+function runQueue(){
+  if(S.beat===2){
+    S.beat=3;
+    deliver(UNKNOWN, Story.messagesOf("b_unknown_3", S.flags), function(){
+      S.beat=4;
+      setTimeout(beat4, INTER_BEAT_MS);
+    });
+  } else if(S.beat===4){
+    beat4();
+  }
+}
+
+function beat4(){
+  var t=Story.thread(UNKNOWN);
+  if(S.current !== t){ t.forcedUnread=true; S.opened[UNKNOWN]=false; renderList(); return; }
+  if(S.leftDuringLive) S.flags["left_during_live"]=true;
+  deliver(UNKNOWN, Story.messagesOf("b_unknown_4", S.flags), function(){
+    S.beat=5;
+    renderChoices(Story.choicesOf("b_unknown_4").map(function(c){
+      return { id: c.id, token: Story.labelOf(c), choice: c };
+    }));
+  });
+}
+
+
+/* A reply belongs to the question it answers, not merely to the thread. If Mom asked
+   about the weekend and then about the car, answering one must not discard the other --
+   but four buttons at once is a wall, so a conversation offers one question's answers at
+   a time, in the order they were asked. Answer the weekend and the car is still there. */
+function pendingInThread(threadId){
+  return S.pendingChoices.filter(function(c){ return c.threadId === threadId; });
+}
+
+function choicesForThread(threadId){
+  var all = pendingInThread(threadId);
+  if(!all.length) return [];
+  var oldest = all[0].templateId;
+  return all.filter(function(c){ return c.templateId === oldest; });
+}
+
+/* The player's reply lands in the thread as a message. Without this the choice vanishes
+   and the conversation does not change, which reads as a broken button. */
+function answerInThread(item){
+  var t = Story.thread(item.threadId);
+  if(t && S.shown[t.id]){
+    S.shown[t.id].push({
+      id: "reply_" + item.id + "_" + S.shown[t.id].length,
+      from: "me",
+      kind: "text",
+      body: item.label,
+      offsetMinutes: 0,
+      live: false,
+      delayMs: 0,
+      typingMs: 0,
+      __threadId: item.threadId,
+      __token: item.token
+    });
+    announce({ from: "me" });
+  }
+  /* only this question's replies are spent; anything else the thread asked survives */
+  S.pendingChoices = S.pendingChoices.filter(function(c){
+    return !(c.threadId === item.threadId && c.templateId === item.templateId);
+  });
+  if(item.onPick) item.onPick(item);
+
+  if(S.current && t && S.current.id === t.id){
+    paint(t);
+    scroll.scrollTop = scroll.scrollHeight;
+    renderChoices(choicesForThread(t.id));
+  }
+}
+
+/* One place choices are built, for the same reason as one place text is painted. */
+function renderChoices(items){
+  choicesEl.innerHTML="";
+  if(S.repliesLocked) return;
+  items.forEach(function(item){
+    var b=document.createElement("button");
+    b.className="choice";
+    b.setAttribute("data-choice", item.id);
+    Text.paint(b, item.token);
+    b.addEventListener("click", function(){
+      if(item.choice){
+        choicesEl.innerHTML="";
+        S.pendingChoices=[];
+        finish(item.choice);
+      } else {
+        answerInThread(item);
+      }
+    });
+    choicesEl.appendChild(b);
+  });
+}
+
+/* ============================================================================
+   D20 — ENDINGS DECLARE A MECHANIC
+   ========================================================================== */
+var MECHANIC_TIMING = {
+  linear:   { reveal: 3600 },
+  hold:     { typingAfter: 4000, reveal: 26000 },
+  reappear: { removeAfter: 700, returnAfter: 7000, reveal: 12500 }
+};
+
+var FINAL_DAY = 100;
+
+/* Day 1's answer used to end the run, which made days 2-100 unreachable in play. It now
+   sets the flag and the game carries on: the ending it chose arrives on day 100, ninety
+   nine days later. */
+function finish(choice){
+  (choice.setsFlags || []).forEach(function(f){ S.flags[f]=true; });
+  S.save.flags = S.flags;
+  Save.write(S.save);
+  if((S.save.day || 1) < FINAL_DAY) return;
+  S.ended=true;
+  var ending=Story.endingFor(S.flags);
+  if(!ending) return;
+  var mechanic = ending.mechanic || "linear";
+  var timing = MECHANIC_TIMING[mechanic] || MECHANIC_TIMING.linear;
+  var messages=Story.messagesOf(ending.beatId, S.flags);
+
+  if(mechanic === "reappear"){
+    setTimeout(function(){ S.hidden[UNKNOWN]=true; renderList(); }, timing.removeAfter);
+    setTimeout(function(){
+      S.hidden[UNKNOWN]=false;
+      S.shown[UNKNOWN]=messages.slice();
+      Story.thread(UNKNOWN).forcedUnread=true; S.opened[UNKNOWN]=false;
+      renderList();
+    }, timing.returnAfter);
+    setTimeout(function(){ reveal(ending); }, timing.reveal);
+    return;
+  }
+
+  if(mechanic === "hold"){
+    var wrap=scroll.querySelector(".convo");
+    setTimeout(function(){
+      if(!wrap) return;
+      var ty=document.createElement("div"); ty.className="typing";
+      ty.innerHTML="<i></i><i></i><i></i>";
+      wrap.appendChild(ty); scroll.scrollTop=scroll.scrollHeight;
+    }, timing.typingAfter);
+    setTimeout(function(){ reveal(ending); }, timing.reveal);
+    return;
+  }
+
+  var immediate=messages.filter(function(m){ return m.from==="me"; });
+  var rest=messages.filter(function(m){ return m.from!=="me"; });
+  var wrap2=scroll.querySelector(".convo");
+  immediate.forEach(function(m){
+    var prev=shownOf(Story.thread(UNKNOWN)).slice(-1)[0];
+    S.shown[UNKNOWN].push(m);
+    if(wrap2){ wrap2.appendChild(bubbleFor(m, prev)); appendStamp(wrap2, m); }
+  });
+  if(wrap2) scroll.scrollTop=scroll.scrollHeight;
+  deliver(UNKNOWN, rest, function(){
+    setTimeout(function(){ reveal(ending); }, timing.reveal);
+  });
+}
+
+function reveal(ending){
+  Text.paint(document.getElementById("endTitle"), Story.endingTitle(ending));
+  Text.paint(document.getElementById("endBody"), Story.endingBody(ending));
+  endEl.classList.add("on");
+}
+
+document.getElementById("again").addEventListener("click", function(){
+  Save.clear(); window.location.reload();
+});
+
+/* ============================================================================
+   THE DAY RUNNER — generated days 2..N
+   ========================================================================== */
+function planFor(day){
+  if(!window.Director || !CONTENT.templates) return null;
+  var carried = {
+    flags: S.flags,
+    fired: (S.save && S.save.fired) || {},
+    memory: (S.save && S.save.contactState && S.save.contactState.memory) || {},
+    clues: (S.save && S.save.cluesFound) || {}
+  };
+  return window.Director.planDay(
+    { cast: CONTENT.cast, templates: CONTENT.templates, ladder: CONTENT.ladder,
+      story: Story.raw },
+    (S.save && S.save.runSeed) || "default", day, carried);
+}
+
+/* Turn generated events into messages the renderer already understands. Offsets are
+   spread across the phase window so the thread list stamps them plausibly. */
+function eventsToMessages(events, baseOffsetMin){
+  var out = [], n = 0;
+  events.forEach(function(e){
+    if(e.kind === "choice") return;
+    out.push({
+      id: "g_" + (baseOffsetMin) + "_" + (n),
+      from: "them",
+      kind: e.kind || "text",
+      game: e.game || null,
+      asset: e.asset || null,
+      durationMs: e.durationMs || null,
+      fromContactId: e.speaker,
+      __threadId: e.threadId,
+      emphasis: e.emphasis || null,
+      body: e.body,
+      offsetMinutes: baseOffsetMin + n,
+      live: false,
+      delayMs: 0,
+      typingMs: 0,
+      __token: Text.mint("director.message", e.body)
+    });
+    n += 1;
+  });
+  return out;
+}
+
+function loadPhase(day, phase, options){
+  options = options || {};
+  var plan = planFor(day);
+  if(!plan) return null;
+  S.save.day = day; S.save.phase = phase;
+  var events = plan.phases[phase] || [];
+
+  if(!plan.authored){
+    resetThreads();
+    var byThread = {};
+    events.forEach(function(e){
+      if(e.kind === "choice") return;
+      (byThread[e.threadId] = byThread[e.threadId] || []).push(e);
+    });
+    Object.keys(byThread).forEach(function(threadId){
+      if(!S.shown[threadId]) return;
+      var base = -(60 - Math.min(50, byThread[threadId].length));
+      S.shown[threadId] = S.shown[threadId].concat(
+        eventsToMessages(byThread[threadId], base));
+      var t = Story.thread(threadId);
+      if(t) { t.forcedUnread = true; S.opened[threadId] = false; }
+    });
+    S.pendingChoices = events
+      .filter(function(e){ return e.kind === "choice"; })
+      .map(function(e){
+        return { id: e.choiceId, threadId: e.threadId, templateId: e.templateId,
+                 label: e.label,
+                 token: Generated.label(e), tells: e.tells,
+                 revealsClue: e.revealsClue, memory: e.memory,
+                 onPick: function(item){
+                   recordTold(item.tells);
+                   recordClue(item.revealsClue);
+                   recordMemory(item.memory);
+                 } };
+      });
+  }
+  Save.write(S.save);
+  if(!options.silent) renderList();
+  /* the ending belongs to the thread it is about; it must not slam over Mom */
+  if(day >= FINAL_DAY && phase === "night" &&
+     (!S.current || S.current.id === UNKNOWN)) revealFinalEnding();
+  return plan;
+}
+
+/* One hundred days later. Whatever was said on night one is what it says back. */
+function revealFinalEnding(){
+  if(S.ended) return;
+  var ending = Story.endingFor(S.flags) || Story.endingFor({ unanswered: true });
+  if(!ending) return;
+  S.ended = true;
+  reveal(ending);
+}
+
+/* Act I only writes lastToldByRen. Act II reads it. Retrofitting memory onto twenty days
+   of already-played history is not possible, so it is written from day one. */
+function recordTold(tells){
+  if(!tells) return;
+  var state = S.save.contactState || (S.save.contactState = {});
+  var told = state.lastToldByRen || (state.lastToldByRen = []);
+  told.push({ day: S.save.day, phase: S.save.phase, said: tells });
+  Save.write(S.save);
+}
+
+/* D27: a reply that reveals something writes the clue id. Act I only accumulates; nothing
+   reads these until Act II. */
+function recordClue(clueId){
+  if(!clueId) return;
+  var found = S.save.cluesFound || (S.save.cluesFound = {});
+  found[clueId] = { day: S.save.day, phase: S.save.phase };
+  Save.write(S.save);
+}
+
+/* Act II quotes this back. Written the first time only: the earliest thing the player
+   said is the one that has had longest to be wrong. */
+function recordMemory(memory){
+  if(!memory || !memory.tag) return;
+  var state = S.save.contactState || (S.save.contactState = {});
+  var bank = state.memory || (state.memory = {});
+  if(bank[memory.tag]) return;
+  bank[memory.tag] = memory.fragment;
+  Save.write(S.save);
+}
+
+
+
+
+
+
+
+/* ============================================================================
+   SEARCH — a hundred days of messages and no way to find one.
+   Locked threads are not searched: a lock you can read through is not a lock.
+   ========================================================================== */
+/* not-story:begin — chrome */
+var FIND_GLYPH = "⌕";
+var FIND_PLACEHOLDER = "Search";
+var FIND_NOTHING = "No messages found";
+var FIND_PROMPT = "Type to search your messages";
+var SPOT_HEAD = "one thing is different";
+var SPOT_A = "tuesday";
+var SPOT_B = "tonight";
+var SPOT_FOUND = "found it";
+var SPOT_MISS = "not there";
+/* not-story:end */
+
+function searchable(){
+  var out = [];
+  Story.threads().forEach(function(t){
+    if(isLocked(t)) return;                 /* a lock you can read through is not a lock */
+    (S.shown[t.id] || []).forEach(function(m){
+      if(!m.body) return;
+      out.push({ thread: t, m: m });
+    });
+  });
+  return out;
+}
+
+function runSearch(query){
+  scroll.innerHTML = "";
+  var q = query.trim().toLowerCase();
+  if(!q){
+    var prompt = document.createElement("div");
+    prompt.className = "empty";
+    chromeText(prompt, FIND_PROMPT);
+    scroll.appendChild(prompt);
+    return 0;
+  }
+  var hits = searchable().filter(function(h){
+    return h.m.body.toLowerCase().indexOf(q) >= 0;
+  }).sort(function(a, b){ return b.m.offsetMinutes - a.m.offsetMinutes; });
+
+  if(!hits.length){
+    var none = document.createElement("div");
+    none.className = "empty";
+    chromeText(none, FIND_NOTHING);
+    scroll.appendChild(none);
+    return 0;
+  }
+
+  hits.slice(0, 60).forEach(function(h){
+    var b = document.createElement("button");
+    b.className = "hit";
+    b.setAttribute("data-hit", h.m.id);
+    var top = document.createElement("span");
+    top.className = "top";
+    var who = document.createElement("span");
+    who.className = "who3";
+    Text.paint(who, Story.threadName(h.thread));
+    var when = document.createElement("span");
+    when.className = "at";
+    when.textContent = listStamp(h.m.offsetMinutes);   /* not-story: a stamp */
+    top.appendChild(who); top.appendChild(when);
+
+    /* the match is highlighted by splitting, never by building markup from the body */
+    var line = document.createElement("span");
+    line.className = "line";
+    var body = h.m.body;
+    var at = body.toLowerCase().indexOf(q);
+    var before = document.createElement("span");
+    Text.paint(before, Text.mint("story.message", body.slice(0, at)));
+    var hitPart = document.createElement("mark");
+    Text.paint(hitPart, Text.mint("story.message", body.slice(at, at + q.length)));
+    var after = document.createElement("span");
+    Text.paint(after, Text.mint("story.message", body.slice(at + q.length)));
+    line.appendChild(before); line.appendChild(hitPart); line.appendChild(after);
+
+    b.appendChild(top); b.appendChild(line);
+    b.addEventListener("click", function(){ closeSearch(); openThread(h.thread); });
+    scroll.appendChild(b);
+  });
+  return hits.length;
+}
+
+function openSearch(){
+  S.searching = true;
+  choicesEl.innerHTML = "";
+  appbar.innerHTML = '<div class="searchbar"><button class="back" aria-label="Back">‹</button>'
+                   + '<input id="q" type="search" autocomplete="off"></div>';
+  var input = appbar.querySelector("#q");
+  input.setAttribute("placeholder", FIND_PLACEHOLDER);   /* not-story: chrome */
+  input.setAttribute("aria-label", FIND_PLACEHOLDER);
+  appbar.querySelector(".back").addEventListener("click", closeSearch);
+  input.addEventListener("input", function(){ runSearch(input.value); });
+  input.addEventListener("keydown", function(e){ if(e.key === "Escape") closeSearch(); });
+  runSearch("");
+  input.focus();
+}
+function closeSearch(){ S.searching = false; renderList(true); }
+
+/* ============================================================================
+   SPOT THE DIFFERENCE
+   The hallway is generated, so a second one taken later costs nothing but a
+   parameter. One thing is different, and it is on the floor.
+   ========================================================================== */
+var SPOT_TARGET = { x: 0.34, y: 0.86, r: 0.20 };
+
+function spotWidget(m){
+  var box = document.createElement("div");
+  box.className = "spot";
+  box.setAttribute("data-src", "story.game");
+  box.setAttribute("data-game", "spot");
+  var state = gameState(m.id);
+
+  var head = document.createElement("div");
+  head.className = "head";
+  chromeText(head, SPOT_HEAD);
+  var pair = document.createElement("div");
+  pair.className = "pair";
+  var note = document.createElement("div");
+  note.className = "note2";
+
+  [[0, SPOT_A], [1, SPOT_B]].forEach(function(pairing){
+    var shot = document.createElement("div");
+    shot.className = "shot";
+    shot.appendChild(hallway(1, 0, pairing[0]));
+    var tag = document.createElement("span");
+    tag.className = "tag";
+    chromeText(tag, pairing[1]);
+    shot.appendChild(tag);
+    var ring = document.createElement("span");
+    ring.className = "ring";
+    ring.style.left = (SPOT_TARGET.x * 100) + "%";
+    ring.style.top = (SPOT_TARGET.y * 100) + "%";
+    shot.appendChild(ring);
+    if(pairing[0] === 1){
+      shot.addEventListener("click", function(e){
+        if(state.won) return;
+        var b = shot.getBoundingClientRect();
+        var nx = (e.clientX - b.left) / b.width;
+        var ny = (e.clientY - b.top) / b.height;
+        var dx = nx - SPOT_TARGET.x, dy = ny - SPOT_TARGET.y;
+        if(Math.sqrt(dx * dx + dy * dy) <= SPOT_TARGET.r){
+          state.won = true;
+          Save.write(S.save);
+          box.classList.add("solved");
+          chromeText(note, SPOT_FOUND);
+          Sound.play("receive");
+        } else {
+          var miss = document.createElement("span");
+          miss.className = "miss";
+          miss.style.left = (nx * 100) + "%";
+          miss.style.top = (ny * 100) + "%";
+          shot.appendChild(miss);
+          chromeText(note, SPOT_MISS);
+          Sound.play("send");
+        }
+      });
+    }
+    pair.appendChild(shot);
+  });
+
+  box.appendChild(head); box.appendChild(pair); box.appendChild(note);
+  if(state.won){ box.classList.add("solved"); chromeText(note, SPOT_FOUND); }
+  return box;
+}
+
+/* ============================================================================
+   VOICE MEMO — kind:"audio" has been in the schema since v1 and never drawn.
+   Synthesised like the chimes: room tone, and one thing in it. The memo is the
+   mini-game -- you have to scrub to find the moment, and it is quiet enough that
+   you will go back over it.
+   ========================================================================== */
+/* not-story:begin — chrome and glyphs */
+var VM_PLAY = "▶";
+var VM_PAUSE = "❚❚";
+/* not-story:end */
+
+var Memo = (function(){
+  var buffers = {}, playing = null;
+
+  function hash32(text){
+    var h = 2166136261;
+    for(var i = 0; i < text.length; i++){
+      h ^= text.charCodeAt(i);
+      h = (h * 16777619) >>> 0;
+    }
+    return h;
+  }
+
+  /* the shape you see, and the shape you hear, come from the same seed */
+  function envelope(id, bars){
+    var h = hash32(id), out = [];
+    for(var i = 0; i < bars; i++){
+      h ^= h << 13; h >>>= 0; h ^= h >>> 17; h ^= h << 5; h >>>= 0;
+      out.push(0.18 + (h % 1000) / 1000 * 0.16);
+    }
+    /* the event: a little over two thirds through, and only a little louder */
+    var at = Math.floor(bars * 0.68);
+    [-1, 0, 1].forEach(function(d, k){
+      if(out[at + d] !== undefined) out[at + d] += [0.06, 0.19, 0.08][k];
+    });
+    return out;
+  }
+
+  function buffer(id, ms){
+    if(buffers[id]) return buffers[id];
+    var c = Sound.context();
+    if(!c) return null;
+    var rate = c.sampleRate, length = Math.floor(rate * ms / 1000);
+    var buf = c.createBuffer(1, length, rate);
+    var data = buf.getChannelData(0);
+    var h = hash32(id), last = 0;
+    for(var i = 0; i < length; i++){
+      h ^= h << 13; h >>>= 0; h ^= h >>> 17; h ^= h << 5; h >>>= 0;
+      var white = ((h % 2000) / 1000) - 1;
+      /* one-pole low pass: room tone rather than hiss */
+      last = last + 0.06 * (white - last);
+      data[i] = last * 0.055;
+    }
+    /* the thing in it: a short breath in, at 68% */
+    var at = Math.floor(length * 0.68), span = Math.floor(rate * 0.42);
+    for(var j = 0; j < span; j++){
+      var t = j / span;
+      var shape = Math.sin(Math.PI * t);
+      h ^= h << 13; h >>>= 0; h ^= h >>> 17; h ^= h << 5; h >>>= 0;
+      var n = ((h % 2000) / 1000) - 1;
+      if(at + j < length) data[at + j] += n * shape * 0.085;
+    }
+    buffers[id] = buf;
+    return buf;
+  }
+
+  function stop(){
+    if(playing){
+      try { playing.src.stop(); } catch(e){}
+      if(playing.raf) cancelAnimationFrame(playing.raf);
+      if(playing.onEnd) playing.onEnd();
+      playing = null;
+    }
+  }
+
+  function play(id, ms, from, onTick, onEnd){
+    stop();
+    Sound.unlock();
+    var c = Sound.context();
+    var buf = buffer(id, ms);
+    if(!c || !buf){ if(onEnd) onEnd(); return; }
+    var src = c.createBufferSource();
+    var gain = c.createGain();
+    gain.gain.value = prefs.sound ? 1 : 0;
+    src.buffer = buf;
+    src.connect(gain); gain.connect(c.destination);
+    var startedAt = c.currentTime;
+    src.start(0, (from / 1000) * (buf.duration / (ms / 1000)));
+    playing = { src: src, onEnd: onEnd, raf: null };
+    (function tick(){
+      if(!playing) return;
+      var at = from + (c.currentTime - startedAt) * 1000;
+      if(at >= ms){ stop(); return; }
+      onTick(at);
+      playing.raf = requestAnimationFrame(tick);
+    })();
+    src.onended = function(){ if(playing && playing.src === src) stop(); };
+  }
+
+  return { envelope: envelope, play: play, stop: stop, isPlaying: function(){ return !!playing; } };
+})();
+
+function memoWidget(m){
+  var ms = m.durationMs || 7000;
+  var bars = 34;
+  var shape = Memo.envelope(m.id, bars);
+  var at = 0;
+
+  var box = document.createElement("div");
+  box.className = "msg them vm";
+  box.setAttribute("data-src", "story.audio");
+  box.setAttribute("data-memo", m.id);
+
+  var play = document.createElement("button");
+  play.className = "play";
+  play.textContent = VM_PLAY;              /* not-story: a glyph */
+  var wave = document.createElement("div");
+  wave.className = "wave";
+  var dur = document.createElement("span");
+  dur.className = "dur";
+
+  shape.forEach(function(v){
+    var bar = document.createElement("i");
+    bar.style.height = Math.round(v * 100) + "%";
+    wave.appendChild(bar);
+  });
+
+  function drawAt(value){
+    at = Math.max(0, Math.min(ms, value));
+    var upto = Math.floor((at / ms) * bars);
+    Array.prototype.forEach.call(wave.children, function(bar, i){
+      bar.classList.toggle("past", i < upto);
+    });
+    var secs = Math.max(0, Math.round((ms - at) / 1000));
+    dur.textContent = "0:" + (secs < 10 ? "0" : "") + secs;
+  }
+
+  function stopUI(){ play.textContent = VM_PLAY; }
+
+  play.addEventListener("click", function(){
+    if(Memo.isPlaying()){ Memo.stop(); stopUI(); return; }
+    play.textContent = VM_PAUSE;           /* not-story: a glyph */
+    Memo.play(m.id, ms, at >= ms ? 0 : at, drawAt, function(){ stopUI(); drawAt(ms); });
+  });
+
+  /* scrubbing is the game: the thing in it is quiet and easy to pass over */
+  function scrubTo(clientX){
+    var box2 = wave.getBoundingClientRect();
+    drawAt(((clientX - box2.left) / box2.width) * ms);
+  }
+  var scrubbing = false;
+  wave.addEventListener("pointerdown", function(e){
+    scrubbing = true; Memo.stop(); stopUI(); scrubTo(e.clientX);
+    wave.setPointerCapture(e.pointerId);
+  });
+  wave.addEventListener("pointermove", function(e){ if(scrubbing) scrubTo(e.clientX); });
+  wave.addEventListener("pointerup", function(){ scrubbing = false; });
+
+  box.appendChild(play); box.appendChild(wave); box.appendChild(dur);
+  drawAt(0);
+  return box;
+}
+
+/* ============================================================================
+   SWIPE THE CONVERSATION TO SEE WHEN THINGS HAPPENED
+   The offsets have been exact since D24 and the player has never been able to
+   read them. Drag left, and every message says when.
+   ========================================================================== */
+function wireSwipe(wrap){
+  var startX = 0, dragging = false, shifted = false;
+  var MAX = 58;   /* matched by .convo.shifted padding-left */
+  function setShift(px){
+    wrap.style.transform = "translateX(" + (-px) + "px)";
+    wrap.classList.toggle("shifted", px > 20);
+  }
+  wrap.addEventListener("pointerdown", function(e){
+    if(e.target.closest(".wave") || e.target.closest(".pad")) return;
+    startX = e.clientX; dragging = true; wrap.classList.add("peeking");
+  });
+  wrap.addEventListener("pointermove", function(e){
+    if(!dragging) return;
+    var dx = startX - e.clientX;
+    if(dx > 4) setShift(Math.min(MAX, dx));
+  });
+  ["pointerup", "pointercancel", "pointerleave"].forEach(function(type){
+    wrap.addEventListener(type, function(){
+      if(!dragging) return;
+      dragging = false; wrap.classList.remove("peeking");
+      shifted = !shifted && wrap.classList.contains("shifted");
+      setShift(shifted ? MAX : 0);
+    });
+  });
+}
+
+/* ============================================================================
+   THE STATUS BAR
+   A phone that has been on for a hundred days. In act III the battery stops
+   moving, and nothing explains that either.
+   ========================================================================== */
+function drawStatusBar(){
+  var day = (S.save && S.save.day) || 1;
+  var bars = document.getElementById("bars");
+  var batt = document.getElementById("batt");
+  if(!bars || !batt) return;
+
+  var strength = day < 21 ? 4 : day < 61 ? 3 : 2;
+  bars.innerHTML = "";
+  for(var i = 1; i <= 4; i++){
+    var b = document.createElement("i");
+    b.style.height = (3 + i * 2) + "px";
+    if(i <= strength) b.className = "on";
+    bars.appendChild(b);
+  }
+
+  /* falls through acts I and II, then simply stops */
+  var pct = day >= 61 ? 4 : Math.max(4, 64 - Math.floor(day * 1.0));
+  batt.className = "batt" + (pct <= 10 ? " low" : "");
+  batt.innerHTML = '<span class="cell"><span class="fill"></span></span><span class="pct"></span>';
+  batt.querySelector(".fill").style.width = pct + "%";
+  batt.querySelector(".pct").textContent = pct + "%";   /* not-story: a number */
+}
+
+/* ============================================================================
+   KEYPAD — one component, two uses: a locked thread and a guessing game.
+   ========================================================================== */
+/* not-story:begin — chrome and glyphs */
+var PAD_GAME_HEAD = "im thinking of a number";
+var PAD_RANGE = "1 to 50";
+var PAD_HIGHER = "higher";
+var PAD_LOWER = "lower";
+var PAD_GOT_IT = "got it";
+var PAD_CLEAR = "clear";
+var PAD_GO = "enter";
+var LOCK_GLYPH = "🔒";
+var LOCK_CAP = "this chat is locked";
+var LOCK_WRONG = "wrong code";
+var LOCK_HINT = "four digits";
+/* not-story:end */
+
+function chromeText(el, text){ Text.paint(el, Text.mint("ui.chrome", text)); }
+
+function makeKeypad(digits, onSubmit){
+  var wrap = document.createElement("div");
+  var out = document.createElement("div");
+  out.className = "padout";
+  var msg = document.createElement("div");
+  msg.className = "padmsg";
+  var pad = document.createElement("div");
+  pad.className = "pad";
+  var buffer = "";
+
+  function draw(){ out.textContent = buffer || "·".repeat(digits); }
+
+  function key(label, cls, fn){
+    var b = document.createElement("button");
+    if(cls) b.className = cls;
+    b.textContent = label;                 /* not-story: a digit or a glyph */
+    b.setAttribute("data-key", label);
+    b.addEventListener("click", function(){ fn(); Sound.play("send"); });
+    return b;
+  }
+
+  ["1","2","3","4","5","6","7","8","9"].forEach(function(d){
+    pad.appendChild(key(d, null, function(){
+      if(buffer.length < digits){ buffer += d; draw(); }
+    }));
+  });
+  pad.appendChild(key("⌫", null, function(){ buffer = buffer.slice(0, -1); draw(); }));
+  pad.appendChild(key("0", null, function(){
+    if(buffer.length < digits){ buffer += "0"; draw(); }
+  }));
+  pad.appendChild(key("⏎", "go", function(){
+    if(!buffer.length) return;
+    var verdict = onSubmit(buffer, msg);
+    if(verdict !== "keep"){ buffer = ""; draw(); }
+  }));
+
+  draw();
+  wrap.appendChild(out);
+  wrap.appendChild(msg);
+  wrap.appendChild(pad);
+  wrap.pad = pad;
+  return wrap;
+}
+
+/* ---- locked threads ------------------------------------------------------- */
+function unlockedThreads(){
+  if(!S.save) return {};
+  return S.save.unlocked || (S.save.unlocked = {});
+}
+function isLocked(t){
+  return !!t.lockedBy && !unlockedThreads()[t.id];
+}
+
+function paintLocked(t){
+  var wrap = document.createElement("div");
+  wrap.className = "locked";
+  var glyph = document.createElement("div");
+  glyph.className = "glyph";
+  glyph.textContent = LOCK_GLYPH;          /* not-story: a glyph */
+  var cap = document.createElement("div");
+  cap.className = "cap";
+  chromeText(cap, LOCK_CAP);
+  wrap.appendChild(glyph);
+  wrap.appendChild(cap);
+  wrap.appendChild(makeKeypad(String(t.lockedBy).length, function(entry, msg){
+    if(entry === String(t.lockedBy)){
+      unlockedThreads()[t.id] = true;
+      Save.write(S.save);
+      Sound.play("receive");
+      openThread(t);
+      return "done";
+    }
+    msg.className = "padmsg bad";
+    chromeText(msg, LOCK_WRONG);
+    return "reset";
+  }));
+  var hint = document.createElement("div");
+  hint.className = "padmsg";
+  chromeText(hint, LOCK_HINT);
+  wrap.appendChild(hint);
+  scroll.innerHTML = "";
+  scroll.appendChild(wrap);
+}
+
+/* ---- the guessing game ---------------------------------------------------- */
+function gameState(id){
+  if(!S.save) return null;
+  var all = S.save.games || (S.save.games = {});
+  return all[id] || (all[id] = { tries: [], won: false });
+}
+
+/* the number is the seed's, so the same run always hides the same one */
+function secretFor(id){
+  var seed = (S.save && S.save.runSeed) || "default";
+  var h = 2166136261;
+  var text = seed + "|" + id;
+  for(var i = 0; i < text.length; i++){
+    h ^= text.charCodeAt(i);
+    h = (h * 16777619) >>> 0;
+  }
+  return (h % 50) + 1;
+}
+
+function gameWidget(m){
+  var box = document.createElement("div");
+  box.className = "game";
+  box.setAttribute("data-src", "story.game");
+  box.setAttribute("data-game", m.game);
+  var state = gameState(m.id);
+  var secret = secretFor(m.id);
+
+  var head = document.createElement("div");
+  head.className = "head";
+  chromeText(head, PAD_GAME_HEAD + ", " + PAD_RANGE);
+  box.appendChild(head);
+
+  var tries = document.createElement("div");
+  tries.className = "tries";
+  function drawTries(){
+    tries.innerHTML = "";
+    state.tries.forEach(function(t){
+      var chip = document.createElement("span");
+      chip.className = "try " + (t.n < secret ? "up" : t.n > secret ? "down" : "");
+      chip.textContent = String(t.n);      /* not-story: a number */
+      tries.appendChild(chip);
+    });
+  }
+
+  var pad = makeKeypad(2, function(entry, msg){
+    var n = parseInt(entry, 10);
+    if(!n || n < 1 || n > 50) return "reset";
+    state.tries.push({ n: n });
+    Save.write(S.save);
+    drawTries();
+    if(n === secret){
+      state.won = true;
+      Save.write(S.save);
+      msg.className = "padmsg good";
+      chromeText(msg, PAD_GOT_IT);
+      box.classList.add("done");
+      Sound.play("receive");
+      /* the whole point of Act III's version: it never has to guess */
+      if(m.__mocking) return "done";
+      return "done";
+    }
+    msg.className = "padmsg";
+    chromeText(msg, n < secret ? PAD_HIGHER : PAD_LOWER);
+    return "reset";
+  });
+
+  box.appendChild(tries);
+  box.appendChild(pad);
+  drawTries();
+  if(state.won) box.classList.add("done");
+  return box;
+}
+
+
+/* ============================================================================
+   RECALL
+   A hundred days is longer than anyone's memory of what they clicked. The number
+   remembers. Getting it wrong is the point of the beat; getting it right is the
+   reason to keep coming back.
+   ========================================================================== */
+/* not-story:begin — chrome */
+var RECALL_HEAD  = "which one did you say";
+var RECALL_RIGHT = "yes. that one";
+var RECALL_WRONG = "no. you said";
+var RECALL_NONE  = "you havent said anything yet";
+/* not-story:end */
+
+/* mulberry32 off the same fnv hash secretFor uses, so a run's quiz is the run's. */
+function seededRand(key){
+  var seed = (S.save && S.save.runSeed) || "default";
+  var h = 2166136261, text = seed + "|" + key;
+  for(var i = 0; i < text.length; i++){
+    h ^= text.charCodeAt(i);
+    h = (h * 16777619) >>> 0;
+  }
+  return function(){
+    h = (h + 0x6D2B79F5) >>> 0;
+    var t = h;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+/* Every fragment any choice could have written, minus the slotted ones (a decoy with
+   {CHORE} still in it is not a decoy, it is a bug). */
+function allFragments(){
+  var out = [], seen = {};
+  ((CONTENT.templates && CONTENT.templates.templates) || []).forEach(function(tpl){
+    (tpl.choices || []).forEach(function(c){
+      var f = c.memory && c.memory.fragment;
+      if(!f || /\{[A-Z0-9_]+\}/.test(f) || seen[f]) return;
+      seen[f] = true; out.push(f);
+    });
+  });
+  return out;
+}
+
+/* Stable per message: the same three lines in the same order every time you open the
+   thread, because a quiz that reshuffles itself is a quiz you cannot be wrong about. */
+function recallOptions(id){
+  var bank = (S.save && S.save.contactState && S.save.contactState.memory) || {};
+  var mine = Object.keys(bank).map(function(k){ return bank[k]; })
+    .filter(function(f){ return f && !/\{[A-Z0-9_]+\}/.test(f); });
+  if(!mine.length) return null;
+
+  var r = seededRand(id + "|recall");
+  var truth = mine[Math.floor(r() * mine.length) % mine.length];
+  var pool = allFragments().filter(function(f){ return mine.indexOf(f) < 0; });
+  var opts = [truth];
+  while(opts.length < 3 && pool.length){
+    opts.push(pool.splice(Math.floor(r() * pool.length) % pool.length, 1)[0]);
+  }
+  /* deterministic shuffle */
+  for(var i = opts.length - 1; i > 0; i--){
+    var j = Math.floor(r() * (i + 1)) % (i + 1);
+    var tmp = opts[i]; opts[i] = opts[j]; opts[j] = tmp;
+  }
+  return { truth: truth, options: opts };
+}
+
+function recallWidget(m){
+  var box = document.createElement("div");
+  box.className = "recall";
+  box.setAttribute("data-src", "story.game");
+  box.setAttribute("data-game", "recall");
+
+  var head = document.createElement("div");
+  head.className = "head";
+  var note = document.createElement("div");
+  note.className = "note2";
+  var opts = document.createElement("div");
+  opts.className = "opts";
+  box.appendChild(head); box.appendChild(opts); box.appendChild(note);
+
+  var q = recallOptions(m.id);
+  if(!q){
+    chromeText(head, RECALL_NONE);
+    return box;
+  }
+  chromeText(head, RECALL_HEAD);
+
+  var state = gameState(m.id);
+  function settle(){
+    box.classList.add("done");
+    Array.prototype.forEach.call(opts.children, function(b){
+      b.classList.add(b.getAttribute("data-line") === q.truth ? "right" : "wrong");
+    });
+    chromeText(note, state.won ? RECALL_RIGHT : RECALL_WRONG);
+  }
+
+  q.options.forEach(function(line){
+    var b = document.createElement("button");
+    b.className = "opt";
+    b.setAttribute("data-line", line);
+    /* the fragments are story, and go through the one ingress like everything else */
+    Text.paint(b, Text.mint("story.message", line));
+    b.addEventListener("click", function(){
+      if(state.done) return;
+      state.done = true;
+      state.won = line === q.truth;
+      Save.write(S.save);
+      settle();
+      Sound.play(state.won ? "receive" : "send");
+    });
+    opts.appendChild(b);
+  });
+
+  if(state.done) settle();
+  return box;
+}
+
+
+/* ============================================================================
+   MATCH
+   Three pairs and one tile that has no partner. Nobody counts the tiles.
+   ========================================================================== */
+/* not-story:begin — glyphs and chrome */
+var MATCH_FACES = ["◆", "▲", "●"];
+var MATCH_BACK  = "·";
+var MATCH_HEAD  = "find the pairs";
+var MATCH_DONE  = "all of them";
+var MATCH_ODD   = "";
+/* not-story:end */
+
+var MATCH_FLIP_MS = 620;
+
+function matchWidget(m){
+  var box = document.createElement("div");
+  box.className = "match";
+  box.setAttribute("data-src", "story.game");
+  box.setAttribute("data-game", "match");
+  var state = gameState(m.id);
+  if(!state.found) state.found = [];
+
+  var head = document.createElement("div");
+  head.className = "head";
+  chromeText(head, MATCH_HEAD);
+  var grid = document.createElement("div");
+  grid.className = "grid";
+  var note = document.createElement("div");
+  note.className = "note2";
+  box.appendChild(head); box.appendChild(grid); box.appendChild(note);
+
+  /* three pairs plus the one that has no partner, shuffled by the run's seed */
+  var deck = MATCH_FACES.concat(MATCH_FACES).concat([null]);
+  var r = seededRand(m.id + "|match");
+  for(var i = deck.length - 1; i > 0; i--){
+    var j = Math.floor(r() * (i + 1)) % (i + 1);
+    var tmp = deck[i]; deck[i] = deck[j]; deck[j] = tmp;
+  }
+
+  var busy = false, up = [];
+
+  function isFound(face){ return face !== null && state.found.indexOf(face) >= 0; }
+
+  function tileFor(face, index){
+    var t = document.createElement("button");
+    t.className = "tile";
+    t.setAttribute("data-face", face === null ? "odd" : face);
+    var f = document.createElement("span");
+    f.className = "face";
+    t.appendChild(f);
+
+    function show(on){
+      t.classList.toggle("up", on);
+      f.textContent = on ? (face === null ? MATCH_ODD : face) : MATCH_BACK;
+    }
+    t.__show = show;
+    t.__face = face;
+    t.__index = index;
+    show(isFound(face));
+    if(isFound(face)) t.classList.add("kept");
+
+    t.addEventListener("click", function(){
+      if(busy || t.classList.contains("kept") || up.indexOf(t) >= 0) return;
+      show(true);
+      up.push(t);
+      Sound.play("send");
+      if(up.length < 2) return;
+      busy = true;
+      var a = up[0], b = up[1];
+      if(a.__face !== null && a.__face === b.__face){
+        state.found.push(a.__face);
+        Save.write(S.save);
+        a.classList.add("kept"); b.classList.add("kept");
+        up = []; busy = false;
+        Sound.play("receive");
+        if(state.found.length === MATCH_FACES.length) finish();
+      } else {
+        window.setTimeout(function(){
+          a.__show(false); b.__show(false);
+          up = []; busy = false;
+        }, MATCH_FLIP_MS);
+      }
+    });
+    return t;
+  }
+
+  function finish(){
+    state.won = true;
+    Save.write(S.save);
+    box.classList.add("done");
+    chromeText(note, MATCH_DONE);
+    /* the tile nobody asked about turns over on its own */
+    window.setTimeout(function(){
+      var odd = grid.querySelector('[data-face="odd"]');
+      if(odd){ odd.__show(true); odd.classList.add("kept", "odd"); }
+      Sound.play("pulse"); Haptics.fire("pulse");
+    }, MATCH_FLIP_MS);
+  }
+
+  deck.forEach(function(face, index){ grid.appendChild(tileFor(face, index)); });
+  if(state.won){
+    box.classList.add("done");
+    chromeText(note, MATCH_DONE);
+    var odd = grid.querySelector('[data-face="odd"]');
+    if(odd){ odd.__show(true); odd.classList.add("kept", "odd"); }
+  }
+  return box;
+}
+
+/* ============================================================================
+   REACTIONS — the toy, and the trace.
+   Hold a message to react to it. It is the most ordinary thing a messenger does,
+   it is genuinely nice to use, and it is the only part of the game that records
+   how the player behaves rather than what they chose. Act II starts using it.
+   ========================================================================== */
+/* not-story:begin — chrome and glyphs, no dialogue below */
+var REACTIONS = ["👍", "❤️", "😂", "😮", "❓"];
+var VIEWER_HINT = "pinch or scroll to zoom";
+var VIEWER_CLOSE = "Close";
+/* not-story:end */
+
+var HOLD_MS = 420;
+
+function reactionsBank(){
+  if(!S.save) return {};
+  return S.save.reactions || (S.save.reactions = {});
+}
+
+/* The emoji the player reaches for most. Act II answers with it. */
+function favouriteReaction(){
+  var counts = {}, best = null;
+  var bank = reactionsBank();
+  Object.keys(bank).forEach(function(id){
+    counts[bank[id]] = (counts[bank[id]] || 0) + 1;
+    if(best === null || counts[bank[id]] > counts[best]) best = bank[id];
+  });
+  return best;
+}
+
+function reactionCount(){ return Object.keys(reactionsBank()).length; }
+
+/* From act II, anything the player said in the unnamed thread comes back reacted to,
+   in the player's own most-used emoji. Nobody taught it that. */
+function theirReactionFor(m){
+  if(!m || m.from !== "me") return null;
+  if(!S.save || (S.save.day || 1) < 21) return null;
+  if(m.__threadId !== UNKNOWN && (!S.current || S.current.id !== UNKNOWN)) return null;
+  var fav = favouriteReaction();
+  if(!fav || reactionCount() < 2) return null;
+  return fav;
+}
+
+function setReaction(messageId, emoji){
+  var bank = reactionsBank();
+  if(bank[messageId] === emoji) delete bank[messageId];
+  else bank[messageId] = emoji;
+  Save.write(S.save);
+  if(S.current) { paint(S.current); scroll.scrollTop = scroll.scrollHeight; }
+}
+
+function closePicker(){
+  var open = document.querySelector(".picker");
+  if(open) open.remove();
+  Array.prototype.forEach.call(document.querySelectorAll(".msg.held"), function(el){
+    el.classList.remove("held");
+  });
+}
+
+function openPicker(el, messageId){
+  closePicker();
+  el.classList.add("held");
+  var picker = document.createElement("div");
+  picker.className = "picker";
+  REACTIONS.forEach(function(emoji){
+    var b = document.createElement("button");
+    b.textContent = emoji;                     /* not-story: a glyph, not a line */
+    b.setAttribute("data-react", emoji);
+    b.addEventListener("click", function(ev){
+      ev.stopPropagation();
+      setReaction(messageId, emoji);
+      Sound.play("send");
+      closePicker();
+    });
+    picker.appendChild(b);
+  });
+  document.querySelector(".phone").appendChild(picker);
+  var box = el.getBoundingClientRect();
+  var phone = document.querySelector(".phone").getBoundingClientRect();
+  var top = box.top - phone.top - 46;
+  picker.style.top = Math.max(6, top) + "px";
+  picker.style.left = Math.max(6, Math.min(
+    box.left - phone.left, phone.width - picker.offsetWidth - 6)) + "px";
+}
+
+document.addEventListener("click", function(e){
+  if(!e.target.closest(".picker")) closePicker();
+});
+
+/* hold, double-click, right-click, or the keyboard: four ways in, one behaviour */
+function wireReactable(el, m){
+  if(!m || !m.id) return;
+  el.setAttribute("tabindex", "0");
+  el.setAttribute("data-msg", m.id);
+  var timer = null;
+  var open = function(){ openPicker(el, m.id); };
+  el.addEventListener("pointerdown", function(){
+    timer = setTimeout(open, HOLD_MS);
+  });
+  ["pointerup", "pointerleave", "pointercancel"].forEach(function(type){
+    el.addEventListener(type, function(){ clearTimeout(timer); });
+  });
+  el.addEventListener("dblclick", open);
+  el.addEventListener("contextmenu", function(e){ e.preventDefault(); open(); });
+  el.addEventListener("keydown", function(e){
+    if(e.key === "Enter" || e.key === " "){ e.preventDefault(); open(); }
+  });
+}
+
+function paintReaction(el, m){
+  var mine = reactionsBank()[m.id];
+  var theirs = theirReactionFor(m);
+  if(!mine && !theirs) return;
+  var chip = document.createElement("span");
+  chip.className = "react" + (!mine && theirs ? " theirs" : "");
+  chip.textContent = mine || theirs;           /* not-story: a glyph */
+  if(mine && theirs){
+    var n = document.createElement("span");
+    n.className = "n";
+    n.textContent = "2";                       /* not-story: a count */
+    chip.appendChild(n);
+    chip.classList.add("theirs");
+  }
+  el.appendChild(chip);
+}
+
+/* ============================================================================
+   THE PHOTO, OPENED
+   The hallway is drawn, so zooming is not a bigger file -- it is a bigger draw.
+   Look closely enough and the doorway is not empty.
+   ========================================================================== */
+var viewer = {
+  zoom: 1, x: 0, y: 0, canvas: null,
+  open: function(){
+    var stage = document.getElementById("vstage");
+    document.querySelector(".phone").scrollTop = 0;
+    stage.innerHTML = "";
+    this.zoom = 1; this.x = 0; this.y = 0;
+    this.canvas = hallway(3, 0);
+    this.canvas.style.width = "min(92vw, 340px)";
+    stage.appendChild(this.canvas);
+    this.apply();
+    Text.paint(document.getElementById("vhint"), Text.mint("ui.chrome", VIEWER_HINT));
+    var v = document.getElementById("viewer");
+    v.classList.add("on");
+    v.setAttribute("aria-hidden", "false");
+  },
+  close: function(){
+    var v = document.getElementById("viewer");
+    v.classList.remove("on");
+    v.setAttribute("aria-hidden", "true");
+  },
+  apply: function(){
+    if(!this.canvas) return;
+    this.canvas.style.transform =
+      "translate(" + this.x + "px," + this.y + "px) scale(" + this.zoom + ")";
+    document.getElementById("vzoom").textContent = this.zoom.toFixed(1) + "×";
+  },
+  setZoom: function(next){
+    var before = this.zoom;
+    this.zoom = Math.max(1, Math.min(6, next));
+    if(this.zoom === 1){ this.x = 0; this.y = 0; }
+    /* the grain and what is behind it are only resolved when someone looks */
+    var wasClose = before >= 2.6, isClose = this.zoom >= 2.6;
+    if(wasClose !== isClose){
+      var stage = document.getElementById("vstage");
+      var fresh = hallway(3, isClose ? 1 : 0);
+      fresh.style.width = "min(92vw, 340px)";
+      stage.innerHTML = "";
+      stage.appendChild(fresh);
+      this.canvas = fresh;
+    }
+    this.apply();
+  }
+};
+
+(function wireViewer(){
+  var stage = document.getElementById("vstage");
+  document.getElementById("vclose").addEventListener("click", function(){ viewer.close(); });
+  document.getElementById("vclose").setAttribute("aria-label", VIEWER_CLOSE);
+  stage.addEventListener("wheel", function(e){
+    e.preventDefault();
+    viewer.setZoom(viewer.zoom * (e.deltaY < 0 ? 1.18 : 0.85));
+  }, { passive: false });
+  stage.addEventListener("dblclick", function(){
+    viewer.setZoom(viewer.zoom >= 2.6 ? 1 : 3);
+  });
+  var dragging = false, lastX = 0, lastY = 0;
+  stage.addEventListener("pointerdown", function(e){
+    if(viewer.zoom <= 1) return;
+    dragging = true; lastX = e.clientX; lastY = e.clientY;
+    stage.classList.add("dragging");
+  });
+  window.addEventListener("pointermove", function(e){
+    if(!dragging) return;
+    viewer.x += e.clientX - lastX; viewer.y += e.clientY - lastY;
+    lastX = e.clientX; lastY = e.clientY;
+    viewer.apply();
+  });
+  window.addEventListener("pointerup", function(){
+    dragging = false; stage.classList.remove("dragging");
+  });
+  document.addEventListener("keydown", function(e){
+    if(document.getElementById("viewer").classList.contains("on")){
+      if(e.key === "Escape") viewer.close();
+      if(e.key === "+" || e.key === "=") viewer.setZoom(viewer.zoom * 1.25);
+      if(e.key === "-") viewer.setZoom(viewer.zoom * 0.8);
+    }
+  });
+})();
+
+/* ============================================================================
+   SOUND — synthesised, never loaded.
+   Rule 1: the artifact loads nothing but a font. An audio file would either break
+   that or bloat the build as base64, and a notification chime is four oscillators.
+   ========================================================================== */
+var Sound = (function(){
+  var ctx = null, unlocked = false;
+  var log = [];              /* what was played, so the gate can hear it */
+
+  function context(){
+    if(ctx) return ctx;
+    var Ctor = window.AudioContext || window.webkitAudioContext;
+    if(!Ctor) return null;
+    try { ctx = new Ctor(); } catch(e){ ctx = null; }
+    return ctx;
+  }
+
+  /* Browsers refuse audio until the player has touched something, which is correct
+     and also means the first chime must not be swallowed. */
+  function unlock(){
+    var c = context();
+    if(!c) return;
+    if(c.state === "suspended") c.resume();
+    unlocked = true;
+  }
+
+  function tone(opts){
+    var c = context();
+    if(!c || c.state === "suspended") return;
+    var now = c.currentTime + (opts.at || 0);
+    var osc = c.createOscillator();
+    var gain = c.createGain();
+    osc.type = opts.type || "sine";
+    osc.frequency.setValueAtTime(opts.from, now);
+    if(opts.to) osc.frequency.exponentialRampToValueAtTime(opts.to, now + opts.length);
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.exponentialRampToValueAtTime(opts.gain, now + (opts.attack || 0.008));
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + opts.length);
+    osc.connect(gain); gain.connect(c.destination);
+    osc.start(now); osc.stop(now + opts.length + 0.02);
+  }
+
+  function play(name){
+    log.push(name);
+    if(!prefs.sound) return;
+    unlock();
+    if(name === "receive"){
+      /* almost, but not quite, the one you know */
+      tone({ from: 987.77, to: 1318.5, length: 0.16, gain: 0.05, attack: 0.004 });
+      tone({ from: 1318.5, length: 0.22, gain: 0.028, at: 0.075 });
+    } else if(name === "send"){
+      tone({ from: 1244.5, length: 0.10, gain: 0.022, attack: 0.003 });
+    } else if(name === "pulse"){
+      /* the two-beat. Low enough that a phone speaker mostly gives you the cabinet. */
+      tone({ from: 72, to: 52, length: 0.55, gain: 0.10, attack: 0.05, type: "sine" });
+      tone({ from: 68, to: 48, length: 0.70, gain: 0.09, attack: 0.06, at: 0.42 });
+    }
+  }
+
+  return {
+    play: play,
+    unlock: unlock,
+    context: context,
+    log: function(){ return log.slice(); },
+    clear: function(){ log = []; }
+  };
+})();
+
+/* ============================================================================
+   HAPTICS — restraint is the point (Phase 5, kept).
+   A light tick for a message landing; the slow two-beat reserved for the two
+   moments the content marks, and rule 17 refuses a third.
+   ========================================================================== */
+var Haptics = {
+  log: [],
+  fire: function(kind){
+    this.log.push(kind);
+    if(!prefs.vibrate || !navigator.vibrate) return;
+    if(kind === "tick") navigator.vibrate(12);
+    else if(kind === "pulse") navigator.vibrate([90, 130, 110]);
+  },
+  clear: function(){ this.log = []; }
+};
+
+/* Anything a live message should be felt or heard as, in one place. */
+function announce(m){
+  if(m.emphasis === "pulse"){
+    Sound.play("pulse");
+    Haptics.fire("pulse");
+    return;
+  }
+  if(m.from === "me"){
+    Sound.play("send");
+    return;
+  }
+  Sound.play("receive");
+  Haptics.fire("tick");
+}
+
+["pointerdown", "keydown"].forEach(function(type){
+  window.addEventListener(type, function once(){
+    Sound.unlock();
+    window.removeEventListener(type, once);
+  });
+});
+
+/* ============================================================================
+   SETTINGS — Loop's own settings screen.
+   Diegetic on purpose. The founding rule is no title screen and no menu; a
+   messenger having a settings page is not a menu, it is the app being an app.
+   ========================================================================== */
+
+/* not-story:begin — every string below is UI chrome, none of it is dialogue */
+var CHROME = {
+  settings:      "Settings",
+  account:       "Account",
+  notifications: "Notifications",
+  display:       "Display",
+  privacy:       "Privacy",
+  storage:       "Storage",
+  about:         "About",
+  sound:         "Sound",
+  soundSub:      "Message tones",
+  alerts:        "Message alerts",
+  alertsSub:     "Highlight a thread when something arrives",
+  vibrate:       "Vibrate",
+  vibrateSub:    "On this device only",
+  textSize:      "Text size",
+  small:         "S",
+  medium:        "M",
+  large:         "L",
+  reduceMotion:  "Reduce motion",
+  timestamps:    "Timestamps",
+  blocked:       "Blocked",
+  blockedNone:   "No blocked numbers",
+  blockThis:     "Block this number",
+  blockFailed:   "Couldn't block this number. Try again later.",
+  messages:      "Messages",
+  onDevice:      "On this device",
+  version:       "Loop",
+  versionNo:     "4.2.1",
+  fiction:       "A WORK OF FICTION",
+  reset:         "Reset this device",
+  resetSub:      "Erases everything and starts again",
+  resetConfirm:  "Erase everything?",
+  cancel:        "Cancel",
+  erase:         "Erase",
+  lastActive:    "last active",
+  now:           "now",
+  activity:      "Activity",
+  streak:        "Days in a row",
+  streakOne:     "1 day",
+  streakMany:    "{N} days",
+  longest:       "Longest",
+  opens:         "Times opened"
+};
+/* not-story:end */
+
+var PREF_KEY = "unread.prefs.v1";
+var prefsWiped = false;
+var Prefs = {
+  defaults: { sound: true, alerts: true, vibrate: false, text: "M", motion: false,
+              stamps: true, blocked: [] },
+  read: function(){
+    var stored = {};
+    try { stored = JSON.parse(window.localStorage.getItem(PREF_KEY) || "{}") || {}; }
+    catch(e){ stored = {}; }
+    var out = {};
+    Object.keys(this.defaults).forEach(function(k){
+      out[k] = stored[k] === undefined ? Prefs.defaults[k] : stored[k];
+    });
+    return out;
+  },
+  write: function(p){
+    if(prefsWiped) return;
+    try { window.localStorage.setItem(PREF_KEY, JSON.stringify(p)); } catch(e){}
+  }
+};
+
+var TEXT_PX = { S: "13px", M: "15px", L: "17px" };
+var prefs = Prefs.read();
+
+function applyPrefs(){
+  document.documentElement.style.setProperty("--text", TEXT_PX[prefs.text] || TEXT_PX.M);
+  document.body.classList.toggle("reduce", !!prefs.motion);
+  document.body.classList.toggle("notimestamps", !prefs.stamps);
+}
+
+function savePrefs(){ Prefs.write(prefs); applyPrefs(); }
+
+/* live values, read at the moment the sheet opens rather than cached */
+function messageCount(){
+  var n = 0;
+  Object.keys(S.shown).forEach(function(id){ n += S.shown[id].length; });
+  return n;
+}
+function storageBytes(){
+  var total = 0;
+  try {
+    for(var i=0;i<window.localStorage.length;i++){
+      var key = window.localStorage.key(i);
+      total += key.length + (window.localStorage.getItem(key) || "").length;
+    }
+  } catch(e){}
+  /* the fiction is a phone that has been carrying these threads for months */
+  return total * 2 + messageCount() * 1400;
+}
+function humanBytes(n){
+  if(n < 1024) return n + " B";
+  if(n < 1048576) return (n/1024).toFixed(0) + " KB";
+  return (n/1048576).toFixed(1) + " MB";
+}
+
+/* Ren's account, and the last time Ren used it. On day one that reads six days. On day
+   one hundred it reads a hundred and five, while you are holding the phone. */
+function renLastActive(){
+  var newest = null;
+  Story.threads().forEach(function(t){
+    (S.shown[t.id] || []).forEach(function(m){
+      if(m.from !== "me") return;
+      if(newest === null || m.offsetMinutes > newest) newest = m.offsetMinutes;
+    });
+  });
+  if(newest === null) return CHROME.now;
+  var elapsed = Math.max(0, -newest) + ((S.save && S.save.day ? S.save.day - 1 : 0) * 1440);
+  var days = Math.floor(elapsed / 1440);
+  if(days < 1) return CHROME.now;
+  return days + (days === 1 ? " day ago" : " days ago");   /* not-story */
+}
+
+/* ---- builders: every string goes through the one ingress (D19) ------------ */
+function chrome(text){ return Text.mint("ui.chrome", text); }
+
+function streakLabel(n){
+  n = n || 1;
+  return n === 1 ? CHROME.streakOne : CHROME.streakMany.replace("{N}", String(n));
+}
+
+function sGroup(label){
+  var el = document.createElement("div");
+  el.className = "sgroup";
+  Text.paint(el, chrome(label));
+  return el;
+}
+
+function sRow(label, sub){
+  var row = document.createElement("div");
+  row.className = "srow";
+  var wrap = document.createElement("span");
+  wrap.className = "lbl";
+  var main = document.createElement("span");
+  Text.paint(main, chrome(label));
+  wrap.appendChild(main);
+  if(sub){
+    var s2 = document.createElement("span");
+    s2.className = "sub";
+    Text.paint(s2, chrome(sub));
+    wrap.appendChild(s2);
+  }
+  row.appendChild(wrap);
+  return row;
+}
+
+function sToggle(label, sub, key, onChange){
+  var row = sRow(label, sub);
+  var b = document.createElement("button");
+  b.className = "toggle";
+  b.setAttribute("role", "switch");
+  b.setAttribute("data-pref", key);
+  b.setAttribute("aria-checked", prefs[key] ? "true" : "false");
+  b.setAttribute("aria-label", label);
+  b.addEventListener("click", function(){
+    prefs[key] = !prefs[key];
+    b.setAttribute("aria-checked", prefs[key] ? "true" : "false");
+    savePrefs();
+    if(onChange) onChange(prefs[key]);
+  });
+  row.appendChild(b);
+  return row;
+}
+
+function sValue(label, value){
+  var row = sRow(label);
+  var v = document.createElement("span");
+  v.className = "val";
+  Text.paint(v, chrome(value));
+  row.appendChild(v);
+  return row;
+}
+
+function sSegment(label, key, options){
+  var row = sRow(label);
+  var seg = document.createElement("div");
+  seg.className = "seg";
+  options.forEach(function(option){
+    var b = document.createElement("button");
+    b.setAttribute("data-size", option);
+    b.setAttribute("aria-pressed", prefs[key] === option ? "true" : "false");
+    Text.paint(b, chrome(CHROME[option === "S" ? "small" : option === "M" ? "medium" : "large"]));
+    b.addEventListener("click", function(){
+      prefs[key] = option;
+      savePrefs();
+      Array.prototype.forEach.call(seg.children, function(c){
+        c.setAttribute("aria-pressed", c.getAttribute("data-size") === option ? "true" : "false");
+      });
+    });
+    seg.appendChild(b);
+  });
+  row.appendChild(seg);
+  return row;
+}
+
+function sButton(label, sub, onClick, danger){
+  var row = document.createElement("button");
+  row.className = "srow" + (danger ? " danger" : "");
+  var wrap = document.createElement("span");
+  wrap.className = "lbl";
+  var main = document.createElement("span");
+  Text.paint(main, chrome(label));
+  wrap.appendChild(main);
+  if(sub){
+    var s2 = document.createElement("span");
+    s2.className = "sub";
+    Text.paint(s2, chrome(sub));
+    wrap.appendChild(s2);
+  }
+  row.appendChild(wrap);
+  row.addEventListener("click", onClick);
+  return row;
+}
+
+function buildSettings(){
+  var body = document.getElementById("sheetBody");
+  body.innerHTML = "";
+
+  var card = document.createElement("div");
+  card.className = "me-card";
+  var av = document.createElement("span");
+  av.className = "avatar";
+  av.style.background = "#7E8A93";
+  av.textContent = "R";              /* not-story: the account initial */
+  var col = document.createElement("span");
+  col.className = "col";
+  var name = document.createElement("span");
+  name.className = "who2";
+  Text.paint(name, chrome(CHROME.account));
+  var sub = document.createElement("span");
+  sub.className = "sub";
+  Text.paint(sub, chrome(CHROME.lastActive + " " + renLastActive()));
+  col.appendChild(name); col.appendChild(sub);
+  card.appendChild(av); card.appendChild(col);
+  body.appendChild(card);
+
+  body.appendChild(sGroup(CHROME.activity));
+  body.appendChild(sValue(CHROME.streak, streakLabel(S.save && S.save.streak)));
+  body.appendChild(sValue(CHROME.longest, streakLabel(S.save && S.save.streakBest)));
+  body.appendChild(sValue(CHROME.opens, String((S.save && S.save.opens) || 1)));
+
+  body.appendChild(sGroup(CHROME.notifications));
+  body.appendChild(sToggle(CHROME.sound, CHROME.soundSub, "sound", function(on){
+    if(on) Sound.play("receive");   /* hear what you just turned on */
+  }));
+  body.appendChild(sToggle(CHROME.alerts, CHROME.alertsSub, "alerts"));
+  body.appendChild(sToggle(CHROME.vibrate, CHROME.vibrateSub, "vibrate", function(on){
+    if(on && navigator.vibrate) navigator.vibrate(18);
+  }));
+
+  body.appendChild(sGroup(CHROME.display));
+  body.appendChild(sSegment(CHROME.textSize, "text", ["S", "M", "L"]));
+  body.appendChild(sToggle(CHROME.reduceMotion, null, "motion"));
+  body.appendChild(sToggle(CHROME.timestamps, null, "stamps"));
+
+  body.appendChild(sGroup(CHROME.privacy));
+  var blockedRow = sValue(CHROME.blocked,
+    prefs.blocked.length ? String(prefs.blocked.length) : CHROME.blockedNone);
+  body.appendChild(blockedRow);
+  var fail = document.createElement("div");
+  fail.className = "fail";
+  fail.style.display = "none";
+  body.appendChild(sButton(CHROME.blockThis, null, function(){
+    /* It never works. The number is not in the phone's contact list, so there is nothing
+       for the block to attach to -- which the app can only express as a failure. */
+    Text.paint(fail, chrome(CHROME.blockFailed));
+    fail.style.display = "";
+  }));
+  body.appendChild(fail);
+
+  body.appendChild(sGroup(CHROME.storage));
+  body.appendChild(sValue(CHROME.messages, String(messageCount())));
+  body.appendChild(sValue(CHROME.onDevice, humanBytes(storageBytes())));
+
+  body.appendChild(sGroup(CHROME.about));
+  body.appendChild(sValue(CHROME.version, CHROME.versionNo));
+  body.appendChild(sButton(CHROME.reset, CHROME.resetSub, function(){
+    if(this.getAttribute("data-armed") === "1"){
+      Save.clear();
+      try { window.localStorage.removeItem(PREF_KEY); } catch(e){}
+      prefsWiped = true;
+      window.location.reload();
+      return;
+    }
+    this.setAttribute("data-armed", "1");
+    Text.paint(this.querySelector(".lbl > span"), chrome(CHROME.resetConfirm));
+  }, true));
+
+  var note = document.createElement("div");
+  note.className = "note";
+  Text.paint(note, chrome(CHROME.fiction));
+  body.appendChild(note);
+}
+
+function openSettings(){
+  document.querySelector(".phone").scrollTop = 0;
+  buildSettings();
+  Text.paint(document.getElementById("sheetTitle"), chrome(CHROME.settings));
+  var sheet = document.getElementById("sheet");
+  sheet.classList.add("on");
+  sheet.setAttribute("aria-hidden", "false");
+}
+function closeSettings(){
+  var sheet = document.getElementById("sheet");
+  sheet.classList.remove("on");
+  sheet.setAttribute("aria-hidden", "true");
+}
+document.getElementById("sheetBack").addEventListener("click", closeSettings);
+document.addEventListener("keydown", function(e){
+  if(e.key === "Escape") closeSettings();
+});
+applyPrefs();
+
+/* ============================================================================
+   BOOT
+   ========================================================================== */
+/* A phone laying the page out at 980px shows a doll's house. If whatever is hosting
+   this did not put a viewport in the head, put one there. */
+function ensureViewport(){
+  if(document.querySelector('head meta[name="viewport"]')) return;
+  var m = document.createElement("meta");
+  m.setAttribute("name", "viewport");
+  m.setAttribute("content", "width=device-width,initial-scale=1,viewport-fit=cover");
+  document.head.appendChild(m);
+}
+
+function boot(){
+  ensureViewport();
+  var now = new Date().getTime();
+  var save = Save.read();
+  if(!save){ save = Save.fresh(now); }
+  S.save = save;
+  S.flags = save.flags || {};
+
+  S.away = applyAway(save, now);
+  if(S.away.band === "missed" || S.away.band === "dayAdvanced"){
+    S.repliesLocked = true;
+    S.pendingChoices = [];
+  }
+  if(S.away.daysAdvanced > 0){
+    save.day = Math.min(100, (save.day || 1) + S.away.daysAdvanced);
+    save.phase = "day";
+  }
+  save.lastSeenAt = now;
+  rollStreak(save, dayStamp(now));
+  save.opens = (save.opens || 0) + 1;
+  Save.write(save);
+
+  if(save.day > 1) loadPhase(save.day, save.phase, { silent: true });
+  renderList();
+}
+
+function touch(){
+  if(!S.save) return;
+  S.save.lastSeenAt = new Date().getTime();
+  Save.write(S.save);
+}
+document.addEventListener("visibilitychange", function(){
+  if(document.hidden && S.beat>=3 && !S.ended) S.leftDuringLive=true;
+  touch();
+});
+window.addEventListener("pagehide", touch);
+window.addEventListener("beforeunload", touch);
+
+/* ============================================================================
+   TEST HOOKS
+   ========================================================================== */
+window.__unread = {
+  state: S,
+  story: Story,
+  save: Save,
+  applyAway: applyAway,
+  bands: BANDS,
+  phaseWindowMs: PHASE_WINDOW_MS,
+  openThread: openThread,
+  renderList: function(){ return renderList(true); },
+  loadPhase: function(day, phase){ return loadPhase(day, phase); },
+  toList: function(){ return renderList(true); },
+  renderListSoft: function(){ return renderList(); },
+  choicesForThread: function(id){ return choicesForThread(id).map(function(c){ return c.id; }); },
+  finalDay: FINAL_DAY,
+  openSettings: openSettings,
+  closeSettings: closeSettings,
+  prefs: function(){ return prefs; },
+  sound: Sound,
+  viewer: viewer,
+  reactions: function(){ return reactionsBank(); },
+  favouriteReaction: favouriteReaction,
+  react: function(id, emoji){ setReaction(id, emoji); },
+  secretFor: secretFor,
+  isLocked: function(id){ return isLocked(Story.thread(id)); },
+  games: function(){ return (S.save && S.save.games) || {}; },
+  memo: Memo,
+  drawStatusBar: drawStatusBar,
+  unreadCount: function(id){ return unreadCount(Story.thread(id)); },
+  rollStreak: rollStreak,
+  dayStamp: dayStamp,
+  streak: function(){ return (S.save && S.save.streak) || 0; },
+  openSearch: openSearch,
+  search: function(q){ openSearch(); return runSearch(q); },
+  spotTarget: SPOT_TARGET,
+  recallOptions: recallOptions,
+  matchFaces: function(){ return MATCH_FACES.slice(); },
+  fragments: allFragments,
+  haptics: Haptics,
+  memory: function(){ return (S.save.contactState && S.save.contactState.memory) || {}; },
+  pendingInThread: function(id){
+    return pendingInThread(id).map(function(c){ return { id: c.id, templateId: c.templateId }; });
+  },
+  pickChoice: function(id){
+    var el = document.querySelector('[data-choice="' + id + '"]');
+    if(el) el.click();
+    return !!el;
+  },
+  /* D19: every element that shows story text carries the ingress stamp. Anything that
+     reached the screen another way has none, and shows up here. */
+  auditIngress: function(){
+    var offenders = [];
+    /* not-story: a CSS selector */
+    var nodes = document.querySelectorAll(".msg, .choice, .rp, .rn, .photo");
+    Array.prototype.forEach.call(nodes, function(el){
+      if(!el.getAttribute("data-src")) offenders.push(el.className + ":" + el.textContent.slice(0,40));
+    });
+    return offenders;
+  },
+  paintUnminted: function(){
+    /* the seeded negative: a second path into a bubble */
+    var wrap = scroll.querySelector(".convo") || scroll;
+    var rogue = document.createElement("div");
+    rogue.className = "msg them";
+    /* not-story: the seeded negative deliberately bypasses the ingress */
+    rogue.textContent = "this did not come from story.json";
+    wrap.appendChild(rogue);
+    return rogue;
+  },
+  mintedPaintRejects: function(){
+    var el = document.createElement("div");
+    try { Text.paint(el, "a raw string"); return false; }
+    catch(e){ return true; }
+  }
+};
+
+boot();
+})();
+</script>
+
+</html>
